@@ -5,6 +5,8 @@
 # ignore .env file
 .env
 
+# ignore fasta files
+*.fasta
 
 
 
