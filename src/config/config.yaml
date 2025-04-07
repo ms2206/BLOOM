@@ -1,0 +1,18 @@
+# Parameters for the NCBI search
+ncbi:
+  apy_key:
+  email: dummy@example.com
+
+# Parameters for the aligners
+primer_aligner:
+  match_score: 2
+  mismatch_score: -1
+  open_gap_score: -1
+  extend_gap_score: -0.8
+
+long_aligner:
+  match_score: 2
+  mismatch_score: -1
+  open_gap_score: -0.5
+  extend_gap_score: -0.1
+
