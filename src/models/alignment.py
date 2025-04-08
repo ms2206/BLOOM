@@ -52,11 +52,16 @@ def find_primers(sequence, primers):
 
 def get_seqs_alignment(seq1, seq2):
     alignments = long_aligner.align(seq1, seq2)
+    print("alignments found")
+    print(f'Length: {len(alignments)}')
     best_score = 0
     best_alignment = None
-    for alignment in alignments:
-        if alignment.score > best_score:
-            best_alignment = alignment
+    for i, alignment in enumerate(alignments):
+        if i > 1000:
+            break
+        else:
+            if alignment.score > best_score:
+                best_alignment = alignment
     return best_alignment
     
 
