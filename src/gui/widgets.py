@@ -567,8 +567,9 @@ class BarcodesTab(QScrollArea):
         checked_card(str): id of the selected card
         barcodes_data(list): list of lists containing the data for each barcode card. The
             list includes: sequence, fasta header, number of duplicates and primer intervals.
+        name(str): name of the tab which corresponds to the type of barcode
     """
-    def __init__(self, controller, barcodes_data):
+    def __init__(self, controller, tab_name, barcodes_data):
         """ Initialises an instance of the class.
 
         Args:
@@ -581,7 +582,10 @@ class BarcodesTab(QScrollArea):
         self.checked_card = None
         # Add controller
         self.controller = controller
+        # Add data
         self.barcodes_data = barcodes_data
+        # Add name of the tab (barcode type)
+        self.tab_name = tab_name
         # Allow to be resized
         self.setWidgetResizable(True)
         # List of barcode cards
@@ -617,16 +621,17 @@ class BarcodesTab(QScrollArea):
     
     def check_barcode_card(self, barcode_id):
         """Adds a barcode card that has been checked to the variable checked_card given its id."""
-        for barcode in self.barcode_card_list:
-            if barcode.id == barcode_id:
-                self.checked_card = barcode
+        for barcode_card in self.barcode_card_list:
+            if barcode_card.id == barcode_id:
+                self.checked_card = barcode_card
+                self.controller.add_sequence_to_blast(barcode_card.sequence, self.tab_name)
         self.controller.write_in_logbook(barcode_id)
 
     def uncheck_barcode_cards(self, barcode_id):
         """Deletes a barcode card that has been unchecked from the variable checked_card given its id."""
-        for barcode in self.barcode_card_list:
-            if barcode.id != barcode_id:
-                barcode.uncheck()
+        for barcode_card in self.barcode_card_list:
+            if barcode_card.id != barcode_id:
+                barcode_card.uncheck()
         self.checked_card = None
 
     
@@ -656,7 +661,7 @@ class OutputModule(QTabWidget):
     def add_new_barcode_tab(self, barcode_name, barcodes_data):
         """Adds a barcode tab given a barcod name and a list of data for the barcode cards"""
         # Create tab
-        self.new_barcode_tab = BarcodesTab(self.controller, barcodes_data)
+        self.new_barcode_tab = BarcodesTab(self.controller, barcode_name, barcodes_data)
         # Check if a tab already exists for this barcode
         for index in range(self.count()):
             if self.tabText(index) == barcode_name:

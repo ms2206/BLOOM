@@ -12,14 +12,16 @@ class MainController:
 
     Attributes (widgets):
         studied_organism(Organism): organism to study
-        barcodes(dict): list of barcodes grouped by type to study
+        barcodes(dict): barcodes being studied grouped by type to study
         main_window(MainWindow): main window of the app
+        seqs_to_blast(dict): sequences grouped by barcode type to blast
     """
     def __init__(self):
         """Initialises and instance of the class."""
         self.studied_organism = None  # Track the active organism
         self.barcodes = {}
         self.main_window = None
+        self.seqs_to_blast = {}
 
     def set_main_window(self, main_window):
         """Set the main window"""
@@ -122,5 +124,10 @@ class MainController:
         file_path = current_file.parent.parent / "assets" / "styles" / "style.qss"
         with open(file_path, "r") as f:
             return f.read()
+    
+    def add_sequence_to_blast(self, sequence, type):
+        self.seqs_to_blast[type] = sequence
+        print(self.seqs_to_blast)
+
     
 
