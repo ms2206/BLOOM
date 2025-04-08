@@ -51,12 +51,12 @@ def find_primers(sequence, primers):
     return coordinates
 
 def get_seqs_alignment(seq1, seq2):
+    """Gets the alignment object for two long sequences."""
     alignments = long_aligner.align(seq1, seq2)
-    print("alignments found")
-    print(f'Length: {len(alignments)}')
     best_score = 0
     best_alignment = None
     for i, alignment in enumerate(alignments):
+        # If there are a lot of alignments to check just look at the first 1000
         if i > 1000:
             break
         else:
