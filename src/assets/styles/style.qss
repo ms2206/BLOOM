@@ -97,6 +97,24 @@ QTextEdit {
     font-size: 14px
 }
 
+QTextEdit#forwardPrimer {
+    background-color: #FAC898;
+    border: 2px solid #EC7FA9;
+    border-radius: 5px;
+    padding: 5px;
+    font-family: "Bahnschrift Semibold";
+    font-size: 14px
+}
+
+QTextEdit#reversePrimer {
+    background-color: #B3EBF2;
+    border: 2px solid #EC7FA9;
+    border-radius: 5px;
+    padding: 5px;
+    font-family: "Bahnschrift Semibold";
+    font-size: 14px
+}
+
 QPushButton {
     background-color: #f9e8f0;
     border: 4px solid #EC7FA9;

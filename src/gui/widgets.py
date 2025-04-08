@@ -1,7 +1,7 @@
 """Contains the declaration of all custom widgets as classes."""
 from datetime import datetime
 from PyQt5.QtCore import Qt, QStringListModel
-from PyQt5.QtGui import QTextCursor, QTextCharFormat
+from PyQt5.QtGui import QTextCursor, QTextCharFormat, QColor
 from PyQt5.QtWidgets import *
 
 
@@ -148,10 +148,12 @@ class SearchTab(QFrame):
         self.f_primer_input = QTextEdit()
         self.f_primer_input.setPlaceholderText("Enter forward primer sequence...")
         self.f_primer_input.setFixedHeight(50)
+        self.f_primer_input.setObjectName("forwardPrimer")
         # Input for reverse primer
         self.r_primer_input = QTextEdit()
         self.r_primer_input.setPlaceholderText("Enter reverse primer sequence...")
         self.r_primer_input.setFixedHeight(50)
+        self.r_primer_input.setObjectName("reversePrimer")
         # Search Button
         self.search_button = QPushButton("🔍 Search")
         self.search_button.clicked.connect(self.search_button_action)
@@ -377,27 +379,28 @@ class Sequence(QTextEdit):
         
     def enterEvent(self, event):
         """Enters when the mouse is on top of the sequence. Calls function to highlight."""
-        self.apply_highlight(self.primers_intervals, Qt.yellow)
+        self.apply_highlight(self.primers_intervals, (QColor("#FAC898"), QColor("#B3EBF2")))
         super().enterEvent(event)
         
     def leaveEvent(self, event):
         """Enters when the mouse is NOT on top of the sequence. Calls function to delete highlight."""
-        self.apply_highlight(self.primers_intervals, Qt.transparent)
+        self.apply_highlight(self.primers_intervals, (Qt.transparent, Qt.transparent))
         super().leaveEvent(event)
 
-    def apply_highlight(self, intervals, color):
+    def apply_highlight(self, intervals, colours):
         """Applies highlighter to a set of intervals with a given color."""
-        cursor = self.textCursor()
-        fmt = QTextCharFormat()
-        fmt.setBackground(color)
+        for i, primer_list in enumerate(intervals):
+            cursor = self.textCursor()
+            fmt = QTextCharFormat()
+            fmt.setBackground(colours[i])
 
-        for start, end in intervals:
-            if start > end:
-                continue  # skip invalid intervals
-            length = end - start + 1
-            cursor.setPosition(start)
-            cursor.movePosition(QTextCursor.Right, QTextCursor.KeepAnchor, length)
-            cursor.mergeCharFormat(fmt)
+            for start, end in primer_list:
+                if start > end:
+                    continue  # skip invalid intervals
+                length = end - start + 1
+                cursor.setPosition(start)
+                cursor.movePosition(QTextCursor.Right, QTextCursor.KeepAnchor, length)
+                cursor.mergeCharFormat(fmt)
 
 
 class AlignmentPopup(QWidget):

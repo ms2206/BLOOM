@@ -37,7 +37,7 @@ def find_primers(sequence, primers):
     """
     coordinates = []
     for i, primer in enumerate(primers):
-        primer_seq = Seq(primers[0]) if not i else Seq(primers[1]).reverse_complement()
+        primer_seq = Seq(primer) if not i else Seq(primer).reverse_complement()
         best_score = 0
         best_coords = [(0, 0)] if not i else [(len(sequence), len(sequence))] # Default values if there is no alignment
         alignments = primer_aligner.align(sequence, primer_seq)
@@ -47,11 +47,7 @@ def find_primers(sequence, primers):
             if alignment.score > best_score and (gaps + mismatches) < 10:
                 best_coords = get_correct_intervals(alignment)
                 best_score = alignment.score
-        coordinates.extend(best_coords)
-    """
-    if coordinates[0][0] > coordinates[-1][0]:
-        coordinates[0] = (0, 0)
-    """
+        coordinates.append(best_coords)
     return coordinates
 
 def get_seqs_alignment(seq1, seq2):

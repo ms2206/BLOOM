@@ -34,10 +34,11 @@ class Barcode:
 
     def clean_sequence(self, sequence):
         """Trims a raw sequence to just the primers and the nucleotides in between."""
-        coordinates = find_primers(sequence, self.primers)
-        starting_offset = coordinates[0][0]
-        self.primer_coords = [(a - starting_offset, b - starting_offset) for a, b in coordinates]
-        return  sequence[coordinates[0][0]:coordinates[-1][1]+1]
+        intervals = find_primers(sequence, self.primers)
+        trim_limits = self.get_trim_limits(intervals)
+        start_off = trim_limits[0]
+        self.primer_coords = [[(x - start_off, y - start_off) for (x, y) in sublist] for sublist in intervals]
+        return  sequence[trim_limits[0]:trim_limits[1]+1]
    
     def __str__(self):
         """Returns the sequence so that when converted to string or printed the sequences is passed"""
@@ -54,6 +55,10 @@ class Barcode:
     
     def get_primers_intervals(self):
         return self.primer_coords
+
+    def get_trim_limits(self, intervals):
+        all_coordinates  = [num for sublist in intervals for tup in sublist for num in tup]
+        return [min(all_coordinates), max(all_coordinates)]
 
 
 """Dictionary that stores the NCBI query to use for each barcode"""
