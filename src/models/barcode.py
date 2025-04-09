@@ -65,7 +65,7 @@ class Barcode:
 BARCODE_QUERIES = {
     "trnL": "trnL",
     "trnL-UAA": "trnL-UAA",
-    "trnLP6": "trnL",           # The P6 is found inside the trnL loop
+    "trnLP6": "trnL-UAA",           # The P6 is found inside the trnL loop
     "matK": "matK"
 }
 

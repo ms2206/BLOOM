@@ -4,8 +4,8 @@
 
 from Bio import Entrez, SeqIO           # For queries to NCBI web
 from Bio.Blast import NCBIWWW, NCBIXML  # To use BLAST
-
 from config.config_manager import ConfigManager
+import re
 
 # Creates instance of ConfigManager to get ncbi parameters for queries from config file
 config = ConfigManager()
@@ -121,24 +121,22 @@ def get_taxa_id(organism_name, email=EMAIL, api_key=NCBI_API_KEY):
         print(f"Error fetching taxonomy ID: {e}")
         return None
  
-    
-import re
 
-def blast(barcode, rank, email=EMAIL, api_key=NCBI_API_KEY):
+def blast(sequence, barcode_query, rank, megablast_use, email=EMAIL, api_key=NCBI_API_KEY):
     # Define element to return
     data = []
     # Define query
-    query = f'{barcode.get_query()}[gene] AND {rank}[Organism]'
+    query = f'{barcode_query}[gene] AND {rank}[Organism]'
     # Blast
     print("")
     print("Blasting...")
     result_handle = NCBIWWW.qblast(
         program         = "blastn",
         database        = "nt",
-        sequence        = str(barcode),
+        sequence        = sequence,
         entrez_query    = query,
         hitlist_size    = 20000,
-        megablast       = True,
+        megablast       = megablast_use,
     )
     # Parse blast results
     blast_records = NCBIXML.parse(result_handle)
@@ -147,23 +145,31 @@ def blast(barcode, rank, email=EMAIL, api_key=NCBI_API_KEY):
         if blast_record.alignments:
             for index, alignment in enumerate(blast_record.alignments):
                 for subindex, hsp in enumerate(alignment.hsps):
-                    # Get similiarity percentage
-                    similarity_percentage = (hsp.identities / hsp.align_length) * 100
+                    # Get number of differences between sequences
+                    num_differences = hsp.align_length - hsp.identities
                     # Get name of sample
-                    name_match = re.search("\|\s\w+\s\w+", alignment.title)
-                    code_match = re.search("\w+\|\w+\|\w+\|\w+", alignment.title)
-                    name = name_match.group(0)[2:] if name_match else code_match.group(0)
+                    pattern = r"(?:\[\s*)?([A-Z][a-z]+)(?:\s*\])?\s+([a-z\-]+)"
+                    matches = re.findall(pattern, alignment.title)
+                    if not matches:
+                        continue # When the name is some nonsense like A.sativa slkip it. Next time write the full name >:(
+                    name = re.findall(pattern, alignment.title)[0]
                     # Data point with info of the alignment
-                    datapoint = (index, name, similarity_percentage, hsp.score)
+                    datapoint = (name, num_differences, hsp.score)
                     data.append(datapoint)
-    return filter_data(data)
+    return data
 
 def filter_data(data):
+    """Filters the high scoring pairs to get just the ones with the best score."""
+    print("Filtering data")
+    print(len(data))
     unique = {}
     for element in data:
-        if element[1] in unique.keys():
-            if element[2] > unique[element[1]]:
-                unique[element[1]] = element[2]
+        name = element[0]
+        num_differences = element[1]
+        if name in unique.keys():
+            if num_differences < unique[name]:
+                unique[name] = num_differences
         else:
-            unique[element[1]] = element[2]
+            unique[name] = num_differences
+    print("done")
     return unique

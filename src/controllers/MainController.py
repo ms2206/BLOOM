@@ -127,7 +127,53 @@ class MainController:
     
     def add_sequence_to_blast(self, sequence, type):
         self.seqs_to_blast[type] = sequence
-        print(self.seqs_to_blast)
-
     
+    def remove_sequence_to_blast(self, type):
+        if type in self.seqs_to_blast.keys():
+            del self.seqs_to_blast[type]
+    
+    def start_blast(self, blast_mode, rank):
+        results = ()
+        if len(self.seqs_to_blast.keys()) == 1:
+            # Get barcode query from tab name and list of queries
+            barcode_type = list(self.seqs_to_blast.keys())[0]
+            barcode_query = BARCODE_QUERIES[barcode_type]
+            # Get sequence
+            sequence = self.seqs_to_blast[barcode_type]
+            # Check if user wants to use megablast
+            megablast_use = True if blast_mode == "Megablast" else False
+            # Get taxonomy rank name
+            rank_name = ""
+            for level in self.studied_organism.taxonomy:
+                if level['Rank'] == rank:
+                    rank_name = level['ScientificName']
+                    break
+            self.write_in_logbook(f'Starting BLAST search for a {barcode_type} barcode in the {rank} of {self.studied_organism.get_name()}.')
+            results = self.one_blast(sequence, barcode_query, rank_name, megablast_use)
+            self.write_in_logbook("BLAST search has finished.")
+        self.main_window.show_results(results)
+        
+    
+    def one_blast(self, sequence, barcode_query, rank_name, megablast_use):
+        """ Calls blast function to evaluate the number of hits with 1 to 5 or more differences with respect to
+            the query sequence. The it filters the result to provide the same data without repeting species.
+        
+            Arguments:
 
+            Returns:
+                tuple with the data for all hits and the data for unique species
+        
+        """
+        blast_results = bf.blast(sequence, barcode_query, rank_name, megablast_use)
+        # Get differences for all of BLAST hits
+        diffs_all_hits = [0, 0, 0, 0, 0, 0, 0] # [0, 1, 2, 3, 4, 5, more than 5] differences
+        for datapoint in blast_results:
+            index = datapoint[1] if datapoint[1] <= 5 else 6
+            diffs_all_hits[index] += 1
+        # Get differences taking into account unique species (lowest number of diffs)
+        results_species = bf.filter_data(blast_results)   
+        diffs_unique_species = [0, 0, 0, 0, 0, 0, 0] # [0, 1, 2, 3, 4, 5, more than 5] differences
+        for key in results_species.keys():
+            index = results_species[key] if results_species[key] <= 5 else 6
+            diffs_unique_species[index] += 1
+        return (diffs_all_hits, diffs_unique_species)

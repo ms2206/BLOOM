@@ -10,16 +10,19 @@ class MainWindow(QMainWindow):
     Attributes (widgets):
         
     """
-    def __init__(self, controller):
+    def __init__(self, controller, app):
         """ Initialises an instance of the class.
 
         Args:
             controller(MainController)
+            app (QApplication)
         """
         super().__init__()
         # Add controller
         self.controller = controller
         self.controller.set_main_window(self)
+        # Add main app where this window belongs
+        self.app = app
         # Title
         self.setWindowTitle("BLOOM")        
         # Geometry
@@ -73,6 +76,7 @@ class MainWindow(QMainWindow):
     def write_in_logbook(self, text):
         """Writes in the logbook."""
         self.log_book.log(text)
+        self.app.processEvents()
     
     def toggle_input_module(self):
         """Hides or shows the input module."""
@@ -81,3 +85,6 @@ class MainWindow(QMainWindow):
         else:
             self.input_module.show()
         self.header.toggle_button_text()
+    
+    def show_results(self, results):
+        self.output_module.show_results(results)

@@ -16,7 +16,7 @@ def main():
     # Load style sheet
     app.setStyleSheet(bloom_controller.load_style())
     # Initialise main window
-    window = MainWindow(bloom_controller)
+    window = MainWindow(bloom_controller, app)
     # Run app
     window.show()
     sys.exit(app.exec_())

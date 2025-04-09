@@ -48,5 +48,8 @@ class Organism:
     
     def get_taxid(self):
         return self.taxid
+
+    def get_name(self):
+        return self.name
                     
         

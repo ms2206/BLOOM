@@ -1,16 +1,187 @@
 """Contains the declaration of all custom widgets as classes."""
 from datetime import datetime
-from PyQt5.QtCore import Qt, QStringListModel
-from PyQt5.QtGui import QTextCursor, QTextCharFormat, QColor
+from PyQt5.QtCore import Qt, QStringListModel, QTimer, QRectF
+from PyQt5.QtGui import QTextCursor, QTextCharFormat, QColor, QPainter, QBrush, QFont
 from PyQt5.QtWidgets import *
 
 
 """Constants."""
 BARCODE_LIST = ["trnL", "trnL-UAA", "trnLP6"]
-BLAST_MODES = ["Megablast", "Discontiguous megablast", "Blastn"]
-TAXONOMY_RANKS = ["Genus", "Family", "Order", "Kingdom"]
+BLAST_MODES = ["Megablast", "Discontiguous megablast"]
+TAXONOMY_RANKS = ["genus", "tribe", "subfamily", "family"]
+PIE_COLOURS = [QColor("#FF6961"), QColor("#FF7F50"), QColor("#FFA07A"), QColor("#FFD700"), 
+               QColor("#ADFF2F"), QColor("#00FA9A"), QColor("#00FF7F")]
+BAR_COLOURS = PIE_COLOURS
 MAX_THRESHOLD = 100 # For similarity
 MIN_THRESHOLD = 97
+ANIMATION_DURATION = 1500
+
+
+class PieChartWidget(QWidget):
+    def __init__(self, data, colours):
+        super().__init__()
+        # Set data and colours
+        self.data = data
+        self.colours = colours
+        # Animation parameters
+        self.animation_progress = 0.0
+        self.start_angle_offset = -90 # Start drawing from the top
+        self.total_angle = 360
+        self.timer = None
+
+    def set_progress(self, progress):
+        self.animation_progress = progress
+        self.update()
+
+    def paintEvent(self, event):
+        # Define painter object
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        # Define size of drawing
+        side = min(self.width(), self.height()) - 20
+        rect = QRectF((self.width() - side) / 2, (self.height() - side) / 2, side, side)
+        # Calculate current angle 
+        progressAngle = self.animation_progress * self.total_angle
+        startAngle = self.start_angle_offset
+        total_percent = sum(self.data)
+        # Draw the pie chart
+        for i, value in enumerate(self.data):
+            # Scale each slice to fit 300° instead of 360°
+            sliceAngle = (value / total_percent) * self.total_angle
+            # Check if drawing is complete
+            if startAngle - self.start_angle_offset >= progressAngle:
+                break
+            # Check which slice is set to draw
+            if (startAngle - self.start_angle_offset) + sliceAngle <= progressAngle:
+                drawAngle = sliceAngle
+            else:
+                drawAngle = progressAngle - (startAngle - self.start_angle_offset)
+            # Paint with the coulours given
+            painter.setBrush(QBrush(self.colours[i]))
+            painter.setPen(Qt.NoPen)
+            painter.drawPie(rect, int(-startAngle * 16), int(-drawAngle * 16))
+            # Define new start angle for next instant drawing
+            startAngle += sliceAngle
+        # Draw the center hole
+        innerRatio = 0.5
+        innerRectSize = side * innerRatio
+        innerRect = QRectF(
+            (self.width() - innerRectSize) / 2,
+            (self.height() - innerRectSize) / 2,
+            innerRectSize,
+            innerRectSize,
+        )
+        painter.setBrush(QBrush(QColor("#ffffff")))
+        painter.drawEllipse(innerRect)
+        # Animated number in the center
+        target_number = sum(self.data)
+        current_number = int(target_number * self.animation_progress)
+        painter.setPen(QColor(0, 0, 0))
+        font = QFont("Bahnschrift Semibold", int(innerRectSize * 0.2))
+        painter.setFont(font)
+        painter.drawText(innerRect, Qt.AlignCenter, str(current_number))
+
+
+class BarChartWidget(QWidget):
+    def __init__(self, data, colours):
+        super().__init__()
+        # Define data numbers, colours
+        self.data = data
+        self.colours = colours
+        # Animation parameters
+        self.animation_progress = 0.0
+
+    def set_progress(self, progress):
+        self.animation_progress = progress
+        self.update()
+
+    def paintEvent(self, event):
+        # Define painter
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        # Set drawing parameters
+        width = self.width()
+        height = self.height()
+        num_bars = len(self.data)
+        spacing = 30
+        bar_width = (width - (num_bars + 1) * spacing) / num_bars
+        max_value = max(self.data)
+        bottom_margin = 50
+        top_margin = 30
+        bar_area_height = height - top_margin - bottom_margin
+        # Set font for labels
+        font = QFont("Bahnschrift Semibold", 10)
+        painter.setFont(font)
+        # Draw bars
+        for i, value in enumerate(self.data):
+            bar_height = (value / max_value) * bar_area_height * self.animation_progress # Margin for labels
+            x = spacing + i * (bar_width + spacing)
+            y = top_margin + bar_area_height - bar_height
+            # Add colours
+            painter.setBrush(QBrush(self.colours[i]))
+            painter.setPen(Qt.NoPen)
+            painter.drawRect(QRectF(x, y, bar_width, bar_height))
+            # Value label above
+            painter.setPen(QColor(0, 0, 0))
+            painter.drawText(QRectF(x, y - 20, bar_width, 20), Qt.AlignCenter, str(int(value)))
+            # Index label
+            label = str(i) if i <= 5 else ">5"
+            painter.drawText(QRectF(x, top_margin + bar_area_height + 5, bar_width, 20), Qt.AlignCenter, label)
+        # Axis label
+        painter.setFont(QFont("Bahnschrift Semibold", 12, QFont.Bold))
+        painter.drawText(QRectF(0, height - 20, width, 20), Qt.AlignCenter, "Number of differences")
+
+
+class CombinedChartWindow(QWidget):
+    def __init__(self, data, title):
+        super().__init__()
+        self.data = data
+        self.title = title
+        """Widgets."""
+        # Label with the title
+        self.title_label = QLabel(self.title)
+        self.title_label.setObjectName("resultsLabel")
+        # Pie chart
+        self.pieChart = PieChartWidget(self.data, PIE_COLOURS)
+        # Bar chart
+        self.barChart = BarChartWidget(self.data, BAR_COLOURS)
+        # Splitter
+        self.main_splitter = QSplitter(Qt.Horizontal)
+        self.graphs_splitter = QSplitter(Qt.Horizontal)
+        """Splitters layout"""
+        # Splitter for graphs
+        self.graphs_splitter.addWidget(self.pieChart)
+        self.graphs_splitter.addWidget(self.barChart)
+        self.graphs_splitter.setSizes([500, 500])
+        self.graphs_splitter.setStretchFactor(1, 1)
+        # Main splitter
+        self.main_splitter.addWidget(self.title_label)
+        self.main_splitter.addWidget(self.graphs_splitter)
+        self.main_splitter.setSizes([100, 900])
+        self.main_splitter.setStretchFactor(1, 1)
+        """Widgets' layout"""
+        # Layout
+        layout = QHBoxLayout()
+        layout.addWidget(self.main_splitter)
+        self.setLayout(layout)
+        """Animation parameters-"""
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self.update_animation)
+        self.elapsed = 0
+        self.animation_interval = 16  # ~60 FPS
+        self.restart_animation()
+
+    def restart_animation(self):
+        self.elapsed = 0
+        self.timer.start(self.animation_interval)
+
+    def update_animation(self):
+        self.elapsed += self.animation_interval
+        progress = min(self.elapsed / ANIMATION_DURATION, 1.0)
+        self.pieChart.set_progress(progress)
+        self.barChart.set_progress(progress)
+        if progress >= 1.0:
+            self.timer.stop()
 
 
 class CustomMenuBar(QMenuBar):
@@ -224,15 +395,22 @@ class BlastTab(QFrame):
     BLAST and a button to create a phylogenetic tree.
 
     Attributes (widgets):
+        controller (MainController): controller to take the actions of the signals
         blast_mode_dropdown(QComboBox): to select the blast mode
         rank_dropdown(QComboBox): to select the taxonomy rank to analyse
         identity_slider(QSlider): to select the similarity threshold
         blast_button(QPushButton): to use BLAST with the parameters selected
         tree_button(QPushButton): to generate the tree
     """
-    def __init__(self):
-        """Creates an instance of the class."""
+    def __init__(self, controller):
+        """Creates an instance of the class.
+            
+            Args:
+                controller (MainController): controller to take the actions of the signals
+        """
         super().__init__()
+        # Add controller
+        self.controller = controller
         """ Add Widgets """
         # Input blast mode
         self.blast_mode_dropdown = QComboBox()
@@ -247,7 +425,9 @@ class BlastTab(QFrame):
         self.identity_slider.setTickInterval(1)
         self.identity_slider.setTickPosition(QSlider.TicksBelow)
         # Blast button
-        self.blast_button = QPushButton("🚀 BLAST")
+        self.blast_button = QPushButton("🚀 BLAST")  
+        self.blast_button.clicked.connect(self.blast_button_action)
+        # Tree button
         self.tree_button = QPushButton("🌳 Generate Tree")
         # Labels
         self.blast_mode_label = QLabel("BLAST mode")
@@ -289,6 +469,13 @@ class BlastTab(QFrame):
         self.layout.addSpacing(30)     
         # Set layout
         self.setLayout(self.layout)
+    
+    def blast_button_action(self):
+        """Calls the main controller to do a BLAST search."""
+        blast_mode = BLAST_MODES[self.blast_mode_dropdown.currentIndex()]
+        taxonomy_rank = TAXONOMY_RANKS[self.rank_dropdown.currentIndex()]
+        threshold = self.identity_slider.value()
+        self.controller.start_blast(blast_mode, taxonomy_rank)
 
 
 class LogBook(QFrame):
@@ -346,7 +533,7 @@ class InputModule(QTabWidget):
         self.setTabPosition(QTabWidget.North)
         """ Add tabs """
         self.search_tab = SearchTab(self.controller)
-        self.blast_tab = BlastTab()
+        self.blast_tab = BlastTab(self.controller)
         # Add tabs to tab list widget
         self.insertTab(0, self.search_tab, "SEARCH")
         self.insertTab(1, self.blast_tab, "BLAST")
@@ -551,13 +738,36 @@ class ResultsTab(QScrollArea):
         """Add widgets."""
         self.result_container = QWidget()
         self.result_container.setObjectName("outputWidget")
+        self.all_hits_chart = None
+        self.species_chart = None
         """Widgets' layout"""
         # Define layout
-        self.result_layout = QVBoxLayout()
+        self.layout = QVBoxLayout()
         # Set layout
-        self.result_container.setLayout(self.result_layout)
+        self.result_container.setLayout(self.layout)
         self.setWidget(self.result_container)
-
+    
+    def restart_animation(self):
+        if self.all_hits_chart and self.species_chart:
+            self.all_hits_chart.restart_animation()
+            self.species_chart.restart_animation()
+    
+    def clear_layout(self):
+        while self.layout.count():
+            item = self.layout.takeAt(0)
+            widget = item.widget()
+            if widget is not None:
+                widget.setParent(None)
+    
+    def add_stats(self, results):
+        self.clear_layout()
+        self.all_hits_chart = CombinedChartWindow(results[0], "BLAST"+"\n"+"HITS")
+        self.species_chart = CombinedChartWindow(results[1], "UNIQUE"+"\n"+"SPECIES")
+        self.layout.addWidget(self.all_hits_chart)
+        self.layout.addWidget(self.species_chart)
+        self.result_container.setLayout(self.layout)
+        self.setWidget(self.result_container)
+        
 
 class BarcodesTab(QScrollArea):
     """Tab to display the barcode cards.
@@ -625,7 +835,7 @@ class BarcodesTab(QScrollArea):
             if barcode_card.id == barcode_id:
                 self.checked_card = barcode_card
                 self.controller.add_sequence_to_blast(barcode_card.sequence, self.tab_name)
-        self.controller.write_in_logbook(barcode_id)
+        self.controller.write_in_logbook("The barcode " + barcode_id + " has been selected.")
 
     def uncheck_barcode_cards(self, barcode_id):
         """Deletes a barcode card that has been unchecked from the variable checked_card given its id."""
@@ -633,6 +843,7 @@ class BarcodesTab(QScrollArea):
             if barcode_card.id != barcode_id:
                 barcode_card.uncheck()
         self.checked_card = None
+        self.controller.remove_sequence_to_blast(self.tab_name)
 
     
 class OutputModule(QTabWidget):
@@ -657,6 +868,7 @@ class OutputModule(QTabWidget):
         # Add tabs to tab widget
         self.insertTab(0, self.results_tab, "Results")
         self.setCurrentIndex(0)
+        self.currentChanged.connect(self.on_tab_changed)
     
     def add_new_barcode_tab(self, barcode_name, barcodes_data):
         """Adds a barcode tab given a barcod name and a list of data for the barcode cards"""
@@ -672,5 +884,14 @@ class OutputModule(QTabWidget):
                 return
         # If no match found, add new tab
         self.addTab(self.new_barcode_tab, barcode_name)
-        self.setCurrentIndex(self.count() - 1)  
+        self.setCurrentIndex(self.count() - 1) 
+    
+    def show_results(self, results):
+        self.controller.write_in_logbook("Displaying results...")
+        self.setCurrentIndex(0) 
+        self.results_tab.add_stats(results)     
+    
+    def on_tab_changed(self, index):
+        if index == 0:
+            self.results_tab.restart_animation()
           

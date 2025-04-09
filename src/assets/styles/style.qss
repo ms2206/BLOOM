@@ -48,6 +48,13 @@ QLabel {
     color: #FFFFFF
 }
 
+QLabel#resultsLabel {
+    font-size: 24px;
+    font-family: "Bahnschrift Semibold";
+    font-weight: bold;
+    color: #000000
+}
+
 QLineEdit{
     background-color: #FFFFFF;
     border: 2px solid #EC7FA9;
@@ -170,7 +177,7 @@ QLabel#logBookTitle{
 }
 
 QWidget#outputWidget{
-    background-color: #FFFFFF;
+    background-color: #ffffff;
     border: 3px solid #BE5985;
     border-radius: 5px;
 }
