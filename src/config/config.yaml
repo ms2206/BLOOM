@@ -1,7 +1,7 @@
 # Parameters for the NCBI search
 ncbi:
   apy_key:
-  email: dummy@example.com
+  email: exampleofemail@email.com
 
 # Parameters for the aligners
 primer_aligner:

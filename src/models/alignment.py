@@ -57,7 +57,7 @@ def get_seqs_alignment(seq1, seq2):
     best_alignment = None
     for i, alignment in enumerate(alignments):
         # If there are a lot of alignments to check just look at the first 1000
-        if i > 1000:
+        if i > 100:
             break
         else:
             if alignment.score > best_score:

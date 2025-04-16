@@ -9,11 +9,15 @@ from PyQt5.QtWidgets import *
 BARCODE_LIST = ["trnL", "trnL-UAA", "trnLP6"]
 BLAST_MODES = ["Megablast", "Discontiguous megablast"]
 TAXONOMY_RANKS = ["genus", "tribe", "subfamily", "family"]
+DATA_TYPES = ["Number of differences", "Identity percentage"]
+DATA_GROUPS = ["Complete sequences", "Aligned sequences"]
 PIE_COLOURS = [QColor("#FF6961"), QColor("#FF7F50"), QColor("#FFA07A"), QColor("#FFD700"), 
                QColor("#ADFF2F"), QColor("#00FA9A"), QColor("#00FF7F")]
+BAR_LABELS_DIFFS = ["0", "1", "2", "3", "4", "5", ">5"]
+BAR_LABELS_PCTS = ["100%", "100-99%", "99-98%", "98-95%", "95-90%", "90-80%", "<80%"]
 BAR_COLOURS = PIE_COLOURS
 MAX_THRESHOLD = 100 # For similarity
-MIN_THRESHOLD = 97
+MIN_THRESHOLD = 50
 ANIMATION_DURATION = 1500
 
 
@@ -83,11 +87,13 @@ class PieChartWidget(QWidget):
 
 
 class BarChartWidget(QWidget):
-    def __init__(self, data, colours):
+    def __init__(self, data, colours, data_type):
         super().__init__()
         # Define data numbers, colours
         self.data = data
         self.colours = colours
+        self.labels = BAR_LABELS_DIFFS if data_type == "diffs" else BAR_LABELS_PCTS
+        self.title = "Number of differences" if data_type == "diffs" else "Percentage of identity"
         # Animation parameters
         self.animation_progress = 0.0
 
@@ -125,15 +131,15 @@ class BarChartWidget(QWidget):
             painter.setPen(QColor(0, 0, 0))
             painter.drawText(QRectF(x, y - 20, bar_width, 20), Qt.AlignCenter, str(int(value)))
             # Index label
-            label = str(i) if i <= 5 else ">5"
+            label = self.labels[i]
             painter.drawText(QRectF(x, top_margin + bar_area_height + 5, bar_width, 20), Qt.AlignCenter, label)
         # Axis label
         painter.setFont(QFont("Bahnschrift Semibold", 12, QFont.Bold))
-        painter.drawText(QRectF(0, height - 20, width, 20), Qt.AlignCenter, "Number of differences")
+        painter.drawText(QRectF(0, height - 20, width, 20), Qt.AlignCenter, self.title)
 
 
 class CombinedChartWindow(QWidget):
-    def __init__(self, data, title):
+    def __init__(self, data, title, data_type):
         super().__init__()
         self.data = data
         self.title = title
@@ -144,7 +150,7 @@ class CombinedChartWindow(QWidget):
         # Pie chart
         self.pieChart = PieChartWidget(self.data, PIE_COLOURS)
         # Bar chart
-        self.barChart = BarChartWidget(self.data, BAR_COLOURS)
+        self.barChart = BarChartWidget(self.data, BAR_COLOURS, data_type)
         # Splitter
         self.main_splitter = QSplitter(Qt.Horizontal)
         self.graphs_splitter = QSplitter(Qt.Horizontal)
@@ -194,18 +200,22 @@ class CustomMenuBar(QMenuBar):
         settings_menu: contains the actions to change default parameters (future)
         help_menu: contains the action to provide the user with help (future)
     """
-    def __init__(self, parent):
+    def __init__(self, parent, controller):
         super().__init__(parent)
         """ Initialises the instance 
 
         Args:
             parent (QMainWindow): main window of the app where the menu belongs
         """
+        self.controller = controller
         # File Menu
         self.file_menu = self.addMenu("File")
         exit_action = QAction("Exit", self)         # Close the app
         exit_action.triggered.connect(parent.close)
         self.file_menu.addAction(exit_action)
+        csv_action = QAction("Create .csv file", self)
+        csv_action.triggered.connect(self.write_csv)
+        self.file_menu.addAction(csv_action)
         # Settings Menu
         self.settings_menu = self.addMenu("Settings")
         undo_action = QAction("Undo", self)     # Currently does nothing
@@ -214,6 +224,23 @@ class CustomMenuBar(QMenuBar):
         self.settings_menu.addAction(redo_action)
         # Help Menu
         self.help_menu = self.addMenu("Help")
+    
+    def write_csv(self):
+        # Open the Save File dialog
+        options = QFileDialog.Options()
+        file_path, _ = QFileDialog.getSaveFileName(None,
+                                                   "Save CSV File",
+                                                   "",
+                                                   "CSV Files (*.csv);;All Files (*)",
+                                                   options=options)
+        # Exit if the user cancels
+        if not file_path:
+            print("Save cancelled.")
+            return
+        # Ensure file ends with .csv
+        if not file_path.endswith('.csv'):
+            file_path += '.csv'
+        self.controller.write_csv(file_path)
 
 
 class Header(QWidget):
@@ -418,12 +445,18 @@ class BlastTab(QFrame):
         # Input taxonomy rank
         self.rank_dropdown = QComboBox()
         self.rank_dropdown.addItems(TAXONOMY_RANKS)
-        # Input identity threshold
-        self.identity_slider = QSlider(Qt.Horizontal)
-        self.identity_slider.setMinimum(MIN_THRESHOLD)
-        self.identity_slider.setMaximum(MAX_THRESHOLD)
-        self.identity_slider.setTickInterval(1)
-        self.identity_slider.setTickPosition(QSlider.TicksBelow)
+        # Select the type of data to display
+        self.data_type_dropdown = QComboBox()
+        self.data_type_dropdown.addItems(DATA_TYPES)
+        self.data_type_dropdown.setEnabled(False)
+        # Select which data to represent
+        self.data_group_dropdown = QComboBox()
+        self.data_group_dropdown.addItems(DATA_GROUPS)
+        self.data_group_dropdown.setEnabled(False)
+        # Update results button
+        self.update_button = QPushButton("Update results")
+        self.update_button.clicked.connect(self.update_button_action)
+        self.update_button.setEnabled(False)
         # Blast button
         self.blast_button = QPushButton("🚀 BLAST")  
         self.blast_button.clicked.connect(self.blast_button_action)
@@ -432,18 +465,9 @@ class BlastTab(QFrame):
         # Labels
         self.blast_mode_label = QLabel("BLAST mode")
         self.rank_label = QLabel("Taxonomy rank")
-        self.identity_label = QLabel("Identity threshold")
-        # Create layou to add labels for numbers below the slider
-        self.label_row = QHBoxLayout()
-        for i in range(4):  # inclusive
-            lbl = QLabel(str(MIN_THRESHOLD + i))
-            if i == 0:
-                lbl.setAlignment(Qt.AlignLeft)
-            elif i == 3:
-                lbl.setAlignment(Qt.AlignRight)
-            else:
-                lbl.setAlignment(Qt.AlignCenter)
-            self.label_row.addWidget(lbl)
+        self.threshold_label = QLabel("Length threshold:")
+        self.data_type_label = QLabel("Type of data")   
+        self.data_group_label = QLabel("Group of sequences")
         """ Widget's layout """
         # Define layour
         self.layout = QVBoxLayout()
@@ -455,11 +479,15 @@ class BlastTab(QFrame):
         # Add taxonomy rank input
         self.layout.addWidget(self.rank_label)
         self.layout.addWidget(self.rank_dropdown)
-        self.layout.addSpacing(30) 
-        # Add identity threshold input
-        self.layout.addWidget(self.identity_label)
-        self.layout.addWidget(self.identity_slider)
-        self.layout.addLayout(self.label_row)
+        self.layout.addSpacing(50) 
+        # Add section to update results
+        self.layout.addWidget(self.data_type_label)
+        self.layout.addWidget(self.data_type_dropdown)
+        self.layout.addSpacing(20)
+        self.layout.addWidget(self.data_group_label)
+        self.layout.addWidget(self.data_group_dropdown)
+        self.layout.addSpacing(20)
+        self.layout.addWidget(self.update_button)
         # Add space between buttons and other widgets
         self.layout.addStretch()
         # Add search button
@@ -472,10 +500,17 @@ class BlastTab(QFrame):
     
     def blast_button_action(self):
         """Calls the main controller to do a BLAST search."""
+        self.data_type_dropdown.setEnabled(True)
+        self.data_group_dropdown.setEnabled(True)
+        self.update_button.setEnabled(True)
         blast_mode = BLAST_MODES[self.blast_mode_dropdown.currentIndex()]
         taxonomy_rank = TAXONOMY_RANKS[self.rank_dropdown.currentIndex()]
-        threshold = self.identity_slider.value()
         self.controller.start_blast(blast_mode, taxonomy_rank)
+    
+    def update_button_action(self):
+        data_type = DATA_TYPES[self.data_type_dropdown.currentIndex()]
+        data_group = DATA_GROUPS[self.data_group_dropdown.currentIndex()]
+        self.controller.update_results(data_type, data_group)
 
 
 class LogBook(QFrame):
@@ -662,6 +697,9 @@ class BarcodeCard(QFrame):
         # Number of duplicates label
         self.duplicates_label = QLabel(f'Duplicates: {duplicates}')
         self.duplicates_label.setObjectName("barcodeLabel")
+        # Length of sequence label
+        self.length_label = QLabel(f'Length: {len(self.sequence)}')
+        self.length_label.setObjectName("barcodeLabel")
         # Radio button to select card
         self.select_radio = QRadioButton()
         self.select_radio.clicked.connect(self.check)
@@ -671,7 +709,7 @@ class BarcodeCard(QFrame):
         # Adjust size of widget
         self.sequence_text.document().adjustSize()
         height = self.sequence_text.document().size().height()
-        self.sequence_text.setFixedHeight(int(height/3)+10)
+        self.sequence_text.setFixedHeight(int(height/3)+20)
         self.sequence_text.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.sequence_text.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         """Widget's layout."""
@@ -688,6 +726,8 @@ class BarcodeCard(QFrame):
         self.layout.addLayout(self.top_layout)
         # Add duplicates label
         self.layout.addWidget(self.duplicates_label)
+        # Add length label
+        self.layout.addWidget(self.length_label)
         # Add sequence text
         self.layout.addWidget(self.sequence_text) 
         # Set layout
@@ -730,9 +770,10 @@ class ResultsTab(QScrollArea):
     Attributes (widgets):
         
     """
-    def __init__(self):
+    def __init__(self, controller):
         """Creates an instance of the class."""
         super().__init__()
+        self.controller = controller
         # Allow to be resized
         self.setWidgetResizable(True)
         """Add widgets."""
@@ -759,10 +800,10 @@ class ResultsTab(QScrollArea):
             if widget is not None:
                 widget.setParent(None)
     
-    def add_stats(self, results):
+    def add_stats(self, results, data_type):
         self.clear_layout()
-        self.all_hits_chart = CombinedChartWindow(results[0], "BLAST"+"\n"+"HITS")
-        self.species_chart = CombinedChartWindow(results[1], "UNIQUE"+"\n"+"SPECIES")
+        self.all_hits_chart = CombinedChartWindow(results[0], "BLAST"+"\n"+"HITS", data_type)
+        self.species_chart = CombinedChartWindow(results[1], "UNIQUE"+"\n"+"SPECIES", data_type)
         self.layout.addWidget(self.all_hits_chart)
         self.layout.addWidget(self.species_chart)
         self.result_container.setLayout(self.layout)
@@ -864,7 +905,7 @@ class OutputModule(QTabWidget):
         # Set position tabs to horizontal on top
         self.setTabPosition(QTabWidget.North)
         """Add tabs."""
-        self.results_tab = ResultsTab()
+        self.results_tab = ResultsTab(self.controller)
         # Add tabs to tab widget
         self.insertTab(0, self.results_tab, "Results")
         self.setCurrentIndex(0)
@@ -886,10 +927,10 @@ class OutputModule(QTabWidget):
         self.addTab(self.new_barcode_tab, barcode_name)
         self.setCurrentIndex(self.count() - 1) 
     
-    def show_results(self, results):
+    def show_results(self, results, data_type):
         self.controller.write_in_logbook("Displaying results...")
         self.setCurrentIndex(0) 
-        self.results_tab.add_stats(results)     
+        self.results_tab.add_stats(results, data_type)     
     
     def on_tab_changed(self, index):
         if index == 0:

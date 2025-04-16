@@ -29,7 +29,7 @@ class MainWindow(QMainWindow):
         self.setGeometry(100, 100, 1500, 900)
         """Add Widgets."""
         # Set up the menu bar
-        self.menu_bar = CustomMenuBar(self)
+        self.menu_bar = CustomMenuBar(self, self.controller)
         self.setMenuBar(self.menu_bar)   
         # Add header
         self.header = Header(self, self.controller)
@@ -86,5 +86,5 @@ class MainWindow(QMainWindow):
             self.input_module.show()
         self.header.toggle_button_text()
     
-    def show_results(self, results):
-        self.output_module.show_results(results)
+    def show_results(self, results, data_type):
+        self.output_module.show_results(results, data_type)

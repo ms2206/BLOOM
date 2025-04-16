@@ -1,5 +1,7 @@
 """Contains the main controller which manages the GUI and the back-end"""
 
+import csv
+import math
 import services.bloom_functions as bf
 from models.organism import Organism
 from models.barcode import Barcode, BARCODE_QUERIES
@@ -22,6 +24,8 @@ class MainController:
         self.barcodes = {}
         self.main_window = None
         self.seqs_to_blast = {}
+        self.blast_results = {}
+        self.sequence = ""
 
     def set_main_window(self, main_window):
         """Set the main window"""
@@ -44,12 +48,13 @@ class MainController:
             barcode = Barcode(barcode_type, sequence[0], sequence[1], primers)
             barcode_list.append(barcode)
         # Filter the barcodes to avoid repetitions
-        self.filter_barcodes(barcode_list, barcode_type)
+        self.barcodes = self.filter_barcodes(barcode_list, barcode_type)
 
     def filter_barcodes(self, barcode_list, barcode_type):
         """Filters the list of barcodes so that all sequences are unique."""
         # Dictionary to ster the barcodes with sequnce as key
         unique_barcodes = {}
+        filtered_barcodes = {}
         for barcode in barcode_list:
             # Check if the sequence is already in the dict
             if str(barcode) in unique_barcodes:
@@ -59,7 +64,8 @@ class MainController:
             else:
                 # Add the new unique barcode
                 unique_barcodes[str(barcode)] = barcode
-            self.barcodes[barcode_type] = list(unique_barcodes.values())
+            filtered_barcodes[barcode_type] = list(unique_barcodes.values())
+        return filtered_barcodes
     
     def search_for_barcodes(self, organism, barcode_type, primers):
         """Goes throught the process of creating a new organism and the barcode sequences requested by the user."""
@@ -139,7 +145,7 @@ class MainController:
             barcode_type = list(self.seqs_to_blast.keys())[0]
             barcode_query = BARCODE_QUERIES[barcode_type]
             # Get sequence
-            sequence = self.seqs_to_blast[barcode_type]
+            self.sequence = self.seqs_to_blast[barcode_type]
             # Check if user wants to use megablast
             megablast_use = True if blast_mode == "Megablast" else False
             # Get taxonomy rank name
@@ -148,32 +154,93 @@ class MainController:
                 if level['Rank'] == rank:
                     rank_name = level['ScientificName']
                     break
+            # Write in logbook
             self.write_in_logbook(f'Starting BLAST search for a {barcode_type} barcode in the {rank} of {self.studied_organism.get_name()}.')
-            results = self.one_blast(sequence, barcode_query, rank_name, megablast_use)
+            # Run one_blast
+            self.blast_results = bf.blast2(self.sequence, barcode_query, rank_name, megablast_use)
+            # Write in logbook
             self.write_in_logbook("BLAST search has finished.")
-        self.main_window.show_results(results)
-        
-    
-    def one_blast(self, sequence, barcode_query, rank_name, megablast_use):
-        """ Calls blast function to evaluate the number of hits with 1 to 5 or more differences with respect to
-            the query sequence. The it filters the result to provide the same data without repeting species.
-        
-            Arguments:
-
-            Returns:
-                tuple with the data for all hits and the data for unique species
-        
-        """
-        blast_results = bf.blast(sequence, barcode_query, rank_name, megablast_use)
+            # Analyse results
+            results = self.analyse_results_by_diffs("Real")
+        self.main_window.show_results(results, "diffs")
+            
+    def analyse_results_by_diffs(self, mode):
+        target_key = "Real num. diffs" if mode == "Real" else "Aligned num. diffs"
         # Get differences for all of BLAST hits
         diffs_all_hits = [0, 0, 0, 0, 0, 0, 0] # [0, 1, 2, 3, 4, 5, more than 5] differences
-        for datapoint in blast_results:
-            index = datapoint[1] if datapoint[1] <= 5 else 6
+        for datapoint in self.blast_results:
+            index = datapoint[target_key] if datapoint[target_key] <= 5 else 6
             diffs_all_hits[index] += 1
         # Get differences taking into account unique species (lowest number of diffs)
-        results_species = bf.filter_data(blast_results)   
+        results_species = bf.filter_data(self.blast_results, target_key)   
         diffs_unique_species = [0, 0, 0, 0, 0, 0, 0] # [0, 1, 2, 3, 4, 5, more than 5] differences
         for key in results_species.keys():
-            index = results_species[key] if results_species[key] <= 5 else 6
+            index = results_species[key] if results_species[key] <= 5 else 6    
             diffs_unique_species[index] += 1
         return (diffs_all_hits, diffs_unique_species)
+
+    def analyse_results_by_pct(self, mode):
+        target_key = "Real sim. pct" if mode == "Real" else "Aligned sim. pct"
+        # Analyse data for all hits
+        pcts_all_hits = [0, 0, 0, 0, 0, 0, 0] # [100, 100-99, 99-98, 98-95, 95-90, 90-80, <80] %
+        for datapoint in self.blast_results:
+            diffs = datapoint[target_key]
+            index = 6
+            if diffs == 100:
+                index = 0
+            elif 99 <= diffs < 100:
+                index = 1
+            elif 98 <= diffs < 99:
+                index = 2
+            elif 95 <= diffs < 98:
+                index = 3
+            elif 90 <= diffs < 95:
+                index = 4
+            elif 80 <= diffs < 90:
+                index = 5
+            pcts_all_hits[index] += 1   
+        # Analyse data for unique species
+        results_species = bf.filter_data(self.blast_results, target_key)   
+        pcts_species = [0, 0, 0, 0, 0, 0, 0] 
+        for key in results_species.keys():
+            diffs = results_species[key]
+            index = 6
+            if diffs == 100:
+                index = 0
+            elif 99 <= diffs < 100:
+                index = 1
+            elif 98 <= diffs < 99:
+                index = 2
+            elif 95 <= diffs < 98:
+                index = 3
+            elif 90 <= diffs < 95:
+                index = 4
+            elif 80 <= diffs < 90:
+                index = 5
+            pcts_species[index] += 1   
+        return (pcts_all_hits, pcts_species)
+
+    def update_results(self, data_type, data_group):
+        results = None
+        mode = "Real" if data_group == "Complete sequences" else "Aligned"
+        if data_type == "Number of differences":
+            results = self.analyse_results_by_diffs(mode)
+            type = "diffs"
+        else:
+            results = self.analyse_results_by_pct(mode)
+            type = "pcts"
+        self.main_window.show_results(results, type)
+        
+    def write_csv(self, file_path):
+        column_names = self.blast_results[0].keys()
+        try:
+            # Write to the file
+            with open(file_path, mode='w', newline='', encoding='utf-8') as file:
+                writer = csv.DictWriter(file, fieldnames=column_names)
+                writer.writeheader()
+                writer.writerows(self.blast_results)
+            print(f"Data successfully saved to {file_path}")
+        except Exception as e:
+            print(f"Error writing file: {e}")
+
+    
