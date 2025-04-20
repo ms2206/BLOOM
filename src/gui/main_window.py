@@ -1,5 +1,5 @@
 """Contains the main window of the app."""
-from PyQt5.QtWidgets import QMainWindow, QVBoxLayout, QWidget, QSplitter
+from PyQt5.QtWidgets import QMainWindow, QVBoxLayout, QWidget, QSplitter, QMessageBox
 from PyQt5.QtCore import Qt
 from gui.widgets import CustomMenuBar, InputModule, OutputModule, LogBook, Header
 
@@ -86,5 +86,13 @@ class MainWindow(QMainWindow):
             self.input_module.show()
         self.header.toggle_button_text()
     
-    def show_results(self, results, data_type):
-        self.output_module.show_results(results, data_type)
+    def show_results(self, results):
+        self.output_module.show_results(results)
+    
+    def show_error(self, message):
+        QMessageBox.critical(self, "Error", message)
+    
+    def clear(self):
+        self.input_module.clear()
+        self.output_module.clear()
+        self.log_book.clear()

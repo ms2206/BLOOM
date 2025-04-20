@@ -61,14 +61,6 @@ class Barcode:
         return [min(all_coordinates), max(all_coordinates)]
 
 
-"""Dictionary that stores the NCBI query to use for each barcode"""
-BARCODE_QUERIES = {
-    "trnL": "trnL",
-    "trnL-UAA": "trnL-UAA",
-    "trnLP6": "trnL-UAA",           # The P6 is found inside the trnL loop
-    "matK": "matK"
-}
-
     
     
 

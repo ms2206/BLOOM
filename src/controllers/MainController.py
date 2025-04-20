@@ -4,9 +4,18 @@ import csv
 import math
 import services.bloom_functions as bf
 from models.organism import Organism
-from models.barcode import Barcode, BARCODE_QUERIES
+from models.barcode import Barcode
 from models.alignment import get_seqs_alignment
+from config.config_manager import ConfigManager
 from pathlib import Path
+
+
+"""Configuration constants."""
+config = ConfigManager()
+# BLAST percentage threshold
+PCT_THRESHOLD = config.get('percentage_threshold')
+# Barcode queries 
+QUERIES_DICT = config.get_barcodes_queries()
 
 
 class MainController:
@@ -24,7 +33,10 @@ class MainController:
         self.barcodes = {}
         self.main_window = None
         self.seqs_to_blast = {}
-        self.blast_results = {}
+        self.blast_results = []
+        self.blast_results_unique = []
+        self.results_diffs_stats = []
+        self.results_pcts_stats = []
         self.sequence = ""
 
     def set_main_window(self, main_window):
@@ -38,7 +50,7 @@ class MainController:
     def add_barcodes(self, barcode_type, primers):
         """Creates the list of instances of barcodes with their primers for each barcode type."""
         # Get the NCBI query given the barcode
-        barcode_query = BARCODE_QUERIES[barcode_type]
+        barcode_query = QUERIES_DICT[barcode_type]
         # Get the list of data from NCBI which includes fasta header and sequence
         sequence_list = bf.get_NCBI_Sequences(barcode_query, self.studied_organism.get_taxid())
         # Create a list to store the barcodes
@@ -139,11 +151,10 @@ class MainController:
             del self.seqs_to_blast[type]
     
     def start_blast(self, blast_mode, rank):
-        results = ()
         if len(self.seqs_to_blast.keys()) == 1:
             # Get barcode query from tab name and list of queries
             barcode_type = list(self.seqs_to_blast.keys())[0]
-            barcode_query = BARCODE_QUERIES[barcode_type]
+            barcode_query = QUERIES_DICT[barcode_type]
             # Get sequence
             self.sequence = self.seqs_to_blast[barcode_type]
             # Check if user wants to use megablast
@@ -156,80 +167,39 @@ class MainController:
                     break
             # Write in logbook
             self.write_in_logbook(f'Starting BLAST search for a {barcode_type} barcode in the {rank} of {self.studied_organism.get_name()}.')
-            # Run one_blast
-            self.blast_results = bf.blast2(self.sequence, barcode_query, rank_name, megablast_use)
+            # Run blast
+            self.blast_results = bf.blast(self.sequence, barcode_query, rank_name, megablast_use)
+            self.blast_results_unique = bf.filter_data(self.blast_results)
             # Write in logbook
             self.write_in_logbook("BLAST search has finished.")
             # Analyse results
-            results = self.analyse_results_by_diffs("Real")
-        self.main_window.show_results(results, "diffs")
-            
-    def analyse_results_by_diffs(self, mode):
-        target_key = "Real num. diffs" if mode == "Real" else "Aligned num. diffs"
-        # Get differences for all of BLAST hits
-        diffs_all_hits = [0, 0, 0, 0, 0, 0, 0] # [0, 1, 2, 3, 4, 5, more than 5] differences
-        for datapoint in self.blast_results:
-            index = datapoint[target_key] if datapoint[target_key] <= 5 else 6
-            diffs_all_hits[index] += 1
-        # Get differences taking into account unique species (lowest number of diffs)
-        results_species = bf.filter_data(self.blast_results, target_key)   
-        diffs_unique_species = [0, 0, 0, 0, 0, 0, 0] # [0, 1, 2, 3, 4, 5, more than 5] differences
-        for key in results_species.keys():
-            index = results_species[key] if results_species[key] <= 5 else 6    
-            diffs_unique_species[index] += 1
-        return (diffs_all_hits, diffs_unique_species)
-
-    def analyse_results_by_pct(self, mode):
-        target_key = "Real sim. pct" if mode == "Real" else "Aligned sim. pct"
-        # Analyse data for all hits
-        pcts_all_hits = [0, 0, 0, 0, 0, 0, 0] # [100, 100-99, 99-98, 98-95, 95-90, 90-80, <80] %
-        for datapoint in self.blast_results:
-            diffs = datapoint[target_key]
-            index = 6
-            if diffs == 100:
-                index = 0
-            elif 99 <= diffs < 100:
-                index = 1
-            elif 98 <= diffs < 99:
-                index = 2
-            elif 95 <= diffs < 98:
-                index = 3
-            elif 90 <= diffs < 95:
-                index = 4
-            elif 80 <= diffs < 90:
-                index = 5
-            pcts_all_hits[index] += 1   
-        # Analyse data for unique species
-        results_species = bf.filter_data(self.blast_results, target_key)   
-        pcts_species = [0, 0, 0, 0, 0, 0, 0] 
-        for key in results_species.keys():
-            diffs = results_species[key]
-            index = 6
-            if diffs == 100:
-                index = 0
-            elif 99 <= diffs < 100:
-                index = 1
-            elif 98 <= diffs < 99:
-                index = 2
-            elif 95 <= diffs < 98:
-                index = 3
-            elif 90 <= diffs < 95:
-                index = 4
-            elif 80 <= diffs < 90:
-                index = 5
-            pcts_species[index] += 1   
-        return (pcts_all_hits, pcts_species)
-
-    def update_results(self, data_type, data_group):
-        results = None
-        mode = "Real" if data_group == "Complete sequences" else "Aligned"
-        if data_type == "Number of differences":
-            results = self.analyse_results_by_diffs(mode)
-            type = "diffs"
+            self.results_pcts_stats = self.analyse_results_by_pcts()
+            self.results_diffs_stats = self.analyse_results_by_diffs()
+            self.main_window.show_results(self.results_diffs_stats)
         else:
-            results = self.analyse_results_by_pct(mode)
-            type = "pcts"
-        self.main_window.show_results(results, type)
+            self.error_pop_up("Select ONE barcode to BLAST")
+
+    def update_results(self, data_type, show_dissimilar):
+        if not self.results_diffs_stats or not self.results_pcts_stats:
+            self.error_pop_up("Missing BLAST results")
+            return
+        # Create empty results holder
+        results = None
+        # Check if the user wants differences or percentages
+        if data_type == "Number of differences":
+            # Don't pass the last element of each tuple in results if user does not want
+            # to see dissimilar hits
+            if show_dissimilar:
+                results = self.results_diffs_stats
+            else:
+                results = tuple(element[:-1] for element in self.results_diffs_stats)
+        else:
+            if show_dissimilar:
+                results = self.results_pcts_stats
+            else:
+                results = tuple(element[:-1] for element in self.results_pcts_stats)
+        # Return results
+        self.main_window.show_results(results)
         
     def write_csv(self, file_path):
         column_names = self.blast_results[0].keys()
@@ -243,4 +213,70 @@ class MainController:
         except Exception as e:
             print(f"Error writing file: {e}")
 
+    def analyse_results_by_pcts(self):
+        # Create array of stats for identity percentage
+        pcts_all_hits = [0]*(100 - PCT_THRESHOLD + 2)
+        pcts_unique = [0]*(100 - PCT_THRESHOLD + 2)
+        # Create an array of labels
+        labels = ["100%"]
+        for i in range(1, len(pcts_all_hits)-1):
+            labels.append(str(100-i) + "-" + str(100-i-1) + "%")
+        labels.append("<" +  str(PCT_THRESHOLD) + "%")
+        # Calculate stats for all hits
+        for datapoint in self.blast_results:
+            data_pct = datapoint["Identity percentage"]
+            index = len(pcts_all_hits) - 1
+            for pct in range(PCT_THRESHOLD, 101):
+                if data_pct >= pct:
+                    index -= 1
+                else:
+                    break
+            pcts_all_hits[index] += 1
+        # Calculate stats for unique species
+        for datapoint in self.blast_results_unique:
+            data_pct = datapoint["Identity percentage"]
+            index = len(pcts_unique) - 1
+            for pct in range(PCT_THRESHOLD, 101):
+                if data_pct >= pct:
+                    index -= 1
+                else:
+                    break
+            pcts_unique[index] += 1
+        # Return results
+        return (labels, pcts_all_hits, pcts_unique)
+        
+    def analyse_results_by_diffs(self):
+        # Calculate the maximum number of differences given threshold percentage
+        max_diffs = int(math.ceil(len(self.sequence)*(100 - PCT_THRESHOLD)/100))
+        # Create array to count the number of hits or species with a specific number of hits
+        diffs_all_hits = [0]*(max_diffs + 2)
+        diffs_unique = [0]*(max_diffs + 2)
+        # Create an array of labels
+        labels = list(str(i) for i in range(max_diffs+1))
+        labels.append(">" + str(max_diffs))
+        # Calculate stats for all BLAST hits data
+        for datapoint in self.blast_results:
+            index = datapoint["Differences"] if datapoint["Differences"] <= max_diffs else (max_diffs+1)
+            diffs_all_hits[index] += 1
+        # Calculate stats for unique species data
+        for datapoint in self.blast_results_unique:
+            index = datapoint["Differences"] if datapoint["Differences"] <= max_diffs else (max_diffs+1)
+            diffs_unique[index] += 1  
+        # Return results
+        return (labels, diffs_all_hits, diffs_unique) 
     
+    def error_pop_up(self, message):
+        self.main_window.show_error(message)
+    
+    def clear(self):
+        # Clear own data
+        self.studied_organism = None  # Track the active organism
+        self.barcodes = {}
+        self.seqs_to_blast = {}
+        self.blast_results = []
+        self.blast_results_unique = []
+        self.results_diffs_stats = []
+        self.results_pcts_stats = []
+        self.sequence = ""
+        # Clear gui data
+        self.main_window.clear()

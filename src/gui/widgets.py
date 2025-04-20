@@ -3,29 +3,27 @@ from datetime import datetime
 from PyQt5.QtCore import Qt, QStringListModel, QTimer, QRectF
 from PyQt5.QtGui import QTextCursor, QTextCharFormat, QColor, QPainter, QBrush, QFont
 from PyQt5.QtWidgets import *
+from config.config_manager import ConfigManager
 
 
-"""Constants."""
-BARCODE_LIST = ["trnL", "trnL-UAA", "trnLP6"]
-BLAST_MODES = ["Megablast", "Discontiguous megablast"]
-TAXONOMY_RANKS = ["genus", "tribe", "subfamily", "family"]
-DATA_TYPES = ["Number of differences", "Identity percentage"]
-DATA_GROUPS = ["Complete sequences", "Aligned sequences"]
-PIE_COLOURS = [QColor("#FF6961"), QColor("#FF7F50"), QColor("#FFA07A"), QColor("#FFD700"), 
-               QColor("#ADFF2F"), QColor("#00FA9A"), QColor("#00FF7F")]
-BAR_LABELS_DIFFS = ["0", "1", "2", "3", "4", "5", ">5"]
-BAR_LABELS_PCTS = ["100%", "100-99%", "99-98%", "98-95%", "95-90%", "90-80%", "<80%"]
-BAR_COLOURS = PIE_COLOURS
-MAX_THRESHOLD = 100 # For similarity
-MIN_THRESHOLD = 50
-ANIMATION_DURATION = 1500
+"""Configuration constants."""
+config = ConfigManager()
+# Barcode info
+BARCODE_LIST = config.get_barcodes_names()
+PRIMERS_DICT = config.get_barcodes_primers()
+# BLAST configuration
+BLAST_MODES = config.get('blast_modes')
+TAXONOMY_RANKS = config.get('taxonomy_ranks')
+# Results visualisation configuration
+DATA_TYPES = config.get('data_types')
+ANIMATION_DURATION = config.get('animation_duration')
 
 
 class PieChartWidget(QWidget):
-    def __init__(self, data, colours):
+    def __init__(self, values, colours):
         super().__init__()
         # Set data and colours
-        self.data = data
+        self.values = values
         self.colours = colours
         # Animation parameters
         self.animation_progress = 0.0
@@ -47,9 +45,9 @@ class PieChartWidget(QWidget):
         # Calculate current angle 
         progressAngle = self.animation_progress * self.total_angle
         startAngle = self.start_angle_offset
-        total_percent = sum(self.data)
+        total_percent = sum(self.values)
         # Draw the pie chart
-        for i, value in enumerate(self.data):
+        for i, value in enumerate(self.values):
             # Scale each slice to fit 300° instead of 360°
             sliceAngle = (value / total_percent) * self.total_angle
             # Check if drawing is complete
@@ -78,7 +76,7 @@ class PieChartWidget(QWidget):
         painter.setBrush(QBrush(QColor("#ffffff")))
         painter.drawEllipse(innerRect)
         # Animated number in the center
-        target_number = sum(self.data)
+        target_number = sum(self.values)
         current_number = int(target_number * self.animation_progress)
         painter.setPen(QColor(0, 0, 0))
         font = QFont("Bahnschrift Semibold", int(innerRectSize * 0.2))
@@ -87,13 +85,13 @@ class PieChartWidget(QWidget):
 
 
 class BarChartWidget(QWidget):
-    def __init__(self, data, colours, data_type):
+    def __init__(self, values, labels, colours, data_type):
         super().__init__()
         # Define data numbers, colours
-        self.data = data
+        self.labels = labels
+        self.values = values
         self.colours = colours
-        self.labels = BAR_LABELS_DIFFS if data_type == "diffs" else BAR_LABELS_PCTS
-        self.title = "Number of differences" if data_type == "diffs" else "Percentage of identity"
+        self.title = "Number of differences" if data_type == "differences" else "Percentage of identity"
         # Animation parameters
         self.animation_progress = 0.0
 
@@ -108,10 +106,10 @@ class BarChartWidget(QWidget):
         # Set drawing parameters
         width = self.width()
         height = self.height()
-        num_bars = len(self.data)
+        num_bars = len(self.values)
         spacing = 30
         bar_width = (width - (num_bars + 1) * spacing) / num_bars
-        max_value = max(self.data)
+        max_value = max(self.values)
         bottom_margin = 50
         top_margin = 30
         bar_area_height = height - top_margin - bottom_margin
@@ -119,7 +117,7 @@ class BarChartWidget(QWidget):
         font = QFont("Bahnschrift Semibold", 10)
         painter.setFont(font)
         # Draw bars
-        for i, value in enumerate(self.data):
+        for i, value in enumerate(self.values):
             bar_height = (value / max_value) * bar_area_height * self.animation_progress # Margin for labels
             x = spacing + i * (bar_width + spacing)
             y = top_margin + bar_area_height - bar_height
@@ -139,18 +137,21 @@ class BarChartWidget(QWidget):
 
 
 class CombinedChartWindow(QWidget):
-    def __init__(self, data, title, data_type):
+    def __init__(self, data, labels, title, data_type):
         super().__init__()
         self.data = data
+        self.labels = labels
         self.title = title
         """Widgets."""
         # Label with the title
         self.title_label = QLabel(self.title)
         self.title_label.setObjectName("resultsLabel")
+        # Colour palette
+        palette = self.get_color_palette(len(self.data))
         # Pie chart
-        self.pieChart = PieChartWidget(self.data, PIE_COLOURS)
+        self.pieChart = PieChartWidget(values=self.data, colours=palette)
         # Bar chart
-        self.barChart = BarChartWidget(self.data, BAR_COLOURS, data_type)
+        self.barChart = BarChartWidget(values=self.data, labels=self.labels, colours=palette, data_type=data_type)
         # Splitter
         self.main_splitter = QSplitter(Qt.Horizontal)
         self.graphs_splitter = QSplitter(Qt.Horizontal)
@@ -188,7 +189,25 @@ class CombinedChartWindow(QWidget):
         self.barChart.set_progress(progress)
         if progress >= 1.0:
             self.timer.stop()
-
+    
+    def get_color_palette(self, n):
+        if n == 1:
+            return [QColor(*(255, 0, 97))]
+        step = int(510/(n-1))
+        f_palette = []
+        r_palette = []
+        for i in range(int(n/2)):
+            f_colour = (255, 0+i*step, 97)
+            r_colour = (0+i*step, 255, 97)
+            f_palette.append(QColor(*f_colour))
+            r_palette.append(QColor(*r_colour))
+        if n%2 == 1:
+            colour = (255, 255, 97)
+            f_palette.append(QColor(*colour))    
+        r_palette.reverse()
+        palette = f_palette + r_palette
+        return palette
+        
 
 class CustomMenuBar(QMenuBar):
     """Menu bar at the top of the app
@@ -216,6 +235,9 @@ class CustomMenuBar(QMenuBar):
         csv_action = QAction("Create .csv file", self)
         csv_action.triggered.connect(self.write_csv)
         self.file_menu.addAction(csv_action)
+        clear_action = QAction("Clear workspace", self)
+        clear_action.triggered.connect(self.clear_workspace)
+        self.file_menu.addAction(clear_action)
         # Settings Menu
         self.settings_menu = self.addMenu("Settings")
         undo_action = QAction("Undo", self)     # Currently does nothing
@@ -241,6 +263,9 @@ class CustomMenuBar(QMenuBar):
         if not file_path.endswith('.csv'):
             file_path += '.csv'
         self.controller.write_csv(file_path)
+    
+    def clear_workspace(self):
+        self.controller.clear()
 
 
 class Header(QWidget):
@@ -342,6 +367,7 @@ class SearchTab(QFrame):
         # Barcode selection dropdown
         self.barcode_dropdown = QComboBox()
         self.barcode_dropdown.addItems(BARCODE_LIST)
+        self.barcode_dropdown.activated.connect(self.autocomplete_primers)
         # Input for forward primer
         self.f_primer_input = QTextEdit()
         self.f_primer_input.setPlaceholderText("Enter forward primer sequence...")
@@ -354,12 +380,17 @@ class SearchTab(QFrame):
         self.r_primer_input.setObjectName("reversePrimer")
         # Search Button
         self.search_button = QPushButton("🔍 Search")
+        self.search_button.setObjectName("regularButton")
         self.search_button.clicked.connect(self.search_button_action)
         # Labels
         self.species_label = QLabel("Species")
+        self.species_label.setObjectName("regularLabel")
         self.barcode_label = QLabel("Barcode")
+        self.barcode_label.setObjectName("regularLabel")
         self.f_primer_label = QLabel("Forward primer")
+        self.f_primer_label.setObjectName("regularLabel")
         self.r_primer_label = QLabel("Reverse primer")
+        self.r_primer_label.setObjectName("regularLabel")
         """ Widgets' layout """
         # Define layour
         self.layout = QVBoxLayout()
@@ -396,6 +427,10 @@ class SearchTab(QFrame):
         f_primer = self.f_primer_input.toPlainText()
         r_primer = self.r_primer_input.toPlainText()
         primers = (f_primer, r_primer)
+        if not organism or not primers:
+            message = "One or more fields are incomplete."
+            self.controller.error_pop_up(message)
+            return
         # Logbook
         self.controller.write_in_logbook(f'Fetching {barcode_type} sequences for {organism}.')
         # Call controller to get barcodes
@@ -411,6 +446,19 @@ class SearchTab(QFrame):
         # Filter list and use the nuew filtered list instead
         filtered = [s for s in self.full_species_list if self.species_input.text().lower() in s.lower()]
         self.species_model.setStringList(filtered)
+    
+    def autocomplete_primers(self):
+        "Autocompletes the primers boxes with the primers of the selected barcode"
+        barcode_type = BARCODE_LIST[self.barcode_dropdown.currentIndex()]
+        primers = PRIMERS_DICT[barcode_type]
+        self.f_primer_input.setText(primers[0])
+        self.r_primer_input.setText(primers[1])
+    
+    def clear(self):
+        self.species_input.setEnabled(True)
+        self.species_input.setText("")
+        self.f_primer_input.setText("")
+        self.r_primer_input.setText("")
 
 
 class BlastTab(QFrame):
@@ -448,26 +496,28 @@ class BlastTab(QFrame):
         # Select the type of data to display
         self.data_type_dropdown = QComboBox()
         self.data_type_dropdown.addItems(DATA_TYPES)
-        self.data_type_dropdown.setEnabled(False)
         # Select which data to represent
-        self.data_group_dropdown = QComboBox()
-        self.data_group_dropdown.addItems(DATA_GROUPS)
-        self.data_group_dropdown.setEnabled(False)
+        self.dissimilars_checkbox = QCheckBox('Show dissimilar hits', self)
         # Update results button
         self.update_button = QPushButton("Update results")
+        self.update_button.setObjectName("regularButton")
         self.update_button.clicked.connect(self.update_button_action)
-        self.update_button.setEnabled(False)
         # Blast button
-        self.blast_button = QPushButton("🚀 BLAST")  
+        self.blast_button = QPushButton("🚀 BLAST")
+        self.blast_button.setObjectName("regularButton")
         self.blast_button.clicked.connect(self.blast_button_action)
         # Tree button
         self.tree_button = QPushButton("🌳 Generate Tree")
+        self.tree_button.setObjectName("regularButton")
         # Labels
         self.blast_mode_label = QLabel("BLAST mode")
+        self.blast_mode_label.setObjectName("regularLabel")
         self.rank_label = QLabel("Taxonomy rank")
+        self.rank_label.setObjectName("regularLabel")
         self.threshold_label = QLabel("Length threshold:")
-        self.data_type_label = QLabel("Type of data")   
-        self.data_group_label = QLabel("Group of sequences")
+        self.threshold_label.setObjectName("regularLabel")
+        self.data_type_label = QLabel("Type of data")
+        self.data_type_label.setObjectName("regularLabel") 
         """ Widget's layout """
         # Define layour
         self.layout = QVBoxLayout()
@@ -475,42 +525,51 @@ class BlastTab(QFrame):
         self.layout.addSpacing(30)
         self.layout.addWidget(self.blast_mode_label)
         self.layout.addWidget(self.blast_mode_dropdown)
-        self.layout.addSpacing(30) 
+        self.layout.addSpacing(20) 
         # Add taxonomy rank input
         self.layout.addWidget(self.rank_label)
         self.layout.addWidget(self.rank_dropdown)
-        self.layout.addSpacing(50) 
+        self.layout.addSpacing(20) 
+        # Add blast button
+        self.layout.addWidget(self.blast_button)
+        self.layout.addSpacing(50)  
+        # Add a line to divide sections
+        line1 = QFrame()
+        line1.setFrameShape(QFrame.HLine)
+        line1.setFrameShadow(QFrame.Sunken)
+        self.layout.addWidget(line1)
+        self.layout.addSpacing(50)  
         # Add section to update results
         self.layout.addWidget(self.data_type_label)
         self.layout.addWidget(self.data_type_dropdown)
         self.layout.addSpacing(20)
-        self.layout.addWidget(self.data_group_label)
-        self.layout.addWidget(self.data_group_dropdown)
+        self.layout.addWidget(self.dissimilars_checkbox)
         self.layout.addSpacing(20)
         self.layout.addWidget(self.update_button)
-        # Add space between buttons and other widgets
-        self.layout.addStretch()
-        # Add search button
-        self.layout.addWidget(self.blast_button)
-        self.layout.addSpacing(30)     
+        self.layout.addSpacing(50)
+        # Add a line to divide sections
+        line2 = QFrame()
+        line2.setFrameShape(QFrame.HLine)
+        line2.setFrameShadow(QFrame.Sunken)
+        self.layout.addWidget(line2)
+        self.layout.addSpacing(40)  
+        # Add tree button
         self.layout.addWidget(self.tree_button)
-        self.layout.addSpacing(30)     
+        # Add space after all widgets
+        self.layout.addStretch()   
         # Set layout
         self.setLayout(self.layout)
     
     def blast_button_action(self):
         """Calls the main controller to do a BLAST search."""
-        self.data_type_dropdown.setEnabled(True)
-        self.data_group_dropdown.setEnabled(True)
-        self.update_button.setEnabled(True)
         blast_mode = BLAST_MODES[self.blast_mode_dropdown.currentIndex()]
         taxonomy_rank = TAXONOMY_RANKS[self.rank_dropdown.currentIndex()]
         self.controller.start_blast(blast_mode, taxonomy_rank)
     
     def update_button_action(self):
         data_type = DATA_TYPES[self.data_type_dropdown.currentIndex()]
-        data_group = DATA_GROUPS[self.data_group_dropdown.currentIndex()]
-        self.controller.update_results(data_type, data_group)
+        show_dissimilars = self.dissimilars_checkbox.isChecked()
+        self.controller.update_results(data_type, show_dissimilars)
 
 
 class LogBook(QFrame):
@@ -546,6 +605,9 @@ class LogBook(QFrame):
         """Writes in status_bow the action with the time when the action happened."""
         timestamp = datetime.now().strftime("[%H:%M:%S]")
         self.status_box.append(f"{timestamp} {message}")
+    
+    def clear(self):
+        self.status_box.setText("")
 
 
 class InputModule(QTabWidget):
@@ -572,6 +634,9 @@ class InputModule(QTabWidget):
         # Add tabs to tab list widget
         self.insertTab(0, self.search_tab, "SEARCH")
         self.insertTab(1, self.blast_tab, "BLAST")
+    
+    def clear(self):
+        self.search_tab.clear()
 
 
 class Sequence(QTextEdit):
@@ -801,13 +866,29 @@ class ResultsTab(QScrollArea):
                 widget.setParent(None)
     
     def add_stats(self, results, data_type):
+        # Clean layout
         self.clear_layout()
-        self.all_hits_chart = CombinedChartWindow(results[0], "BLAST"+"\n"+"HITS", data_type)
-        self.species_chart = CombinedChartWindow(results[1], "UNIQUE"+"\n"+"SPECIES", data_type)
+        # Create widgets with charts
+        labels = results[0]
+        all_hits = results[1]
+        unique_species = results[2]
+        self.all_hits_chart = CombinedChartWindow(data=all_hits, 
+                                                  labels=labels, 
+                                                  title="BLAST"+"\n"+"HITS", 
+                                                  data_type=data_type)
+        self.species_chart = CombinedChartWindow(data=unique_species,
+                                                 labels=labels,
+                                                 title="UNIQUE"+"\n"+"SPECIES", 
+                                                 data_type=data_type)
+        # Add widgets
         self.layout.addWidget(self.all_hits_chart)
         self.layout.addWidget(self.species_chart)
+        # Set layout
         self.result_container.setLayout(self.layout)
         self.setWidget(self.result_container)
+    
+    def clear(self):
+        self.clear_layout()
         
 
 class BarcodesTab(QScrollArea):
@@ -927,12 +1008,26 @@ class OutputModule(QTabWidget):
         self.addTab(self.new_barcode_tab, barcode_name)
         self.setCurrentIndex(self.count() - 1) 
     
-    def show_results(self, results, data_type):
-        self.controller.write_in_logbook("Displaying results...")
+    def show_results(self, results):
+        # Check type of results
+        labels = results[0]
+        data_type = "percentages" if '%' in labels[0] else 'differences'
+        # Write action in logbook
+        self.controller.write_in_logbook(f'Displaying results by {data_type}')
+        # Change tab to results tab
         self.setCurrentIndex(0) 
+        # Add results in results tab
         self.results_tab.add_stats(results, data_type)     
     
     def on_tab_changed(self, index):
         if index == 0:
             self.results_tab.restart_animation()
+    
+    def clear(self):
+        self.setCurrentIndex(0)
+        # Delete all barcode tabs
+        while self.count() > 1:
+            self.removeTab(1)
+        # Delete results tab info
+        self.results_tab.clear()
           
