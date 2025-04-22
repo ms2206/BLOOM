@@ -419,8 +419,6 @@ class SearchTab(QFrame):
     
     def search_button_action(self):
         """Gathers the data input by the user and commands the controller to search."""
-        # Block organism name button so user can't change it
-        self.species_input.setEnabled(False)
         # Get organism, barcode type and primers chosen by the user
         organism = self.species_input.text()
         barcode_type = BARCODE_LIST[self.barcode_dropdown.currentIndex()]
@@ -434,9 +432,15 @@ class SearchTab(QFrame):
         # Logbook
         self.controller.write_in_logbook(f'Fetching {barcode_type} sequences for {organism}.')
         # Call controller to get barcodes
-        self.controller.search_for_barcodes(organism, barcode_type, primers)
-        # Call controller to create new tab with barcodes
-        self.controller.add_new_barcode_tab(barcode_type)
+        searching = self.controller.search_for_barcodes(organism, barcode_type, primers)
+        if searching:
+            self.controller.write_in_logbook(f'Error when searching for barcodes')
+            return
+        else:
+            # Block organism name button so user can't change it
+            self.species_input.setEnabled(False)
+            # Call controller to create new tab with barcodes
+            self.controller.add_new_barcode_tab(barcode_type)
     
     def update_species_completer(self):
         """Updates the list of suggested species given what the user has written."""
@@ -564,7 +568,10 @@ class BlastTab(QFrame):
         """Calls the main controller to do a BLAST search."""
         blast_mode = BLAST_MODES[self.blast_mode_dropdown.currentIndex()]
         taxonomy_rank = TAXONOMY_RANKS[self.rank_dropdown.currentIndex()]
-        self.controller.start_blast(blast_mode, taxonomy_rank)
+        blasting = self.controller.start_blast(blast_mode, taxonomy_rank)
+        if blasting:
+            self.controller.write_in_logbook("Error when using BLAST")
+        
     
     def update_button_action(self):
         data_type = DATA_TYPES[self.data_type_dropdown.currentIndex()]

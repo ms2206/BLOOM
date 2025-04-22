@@ -46,6 +46,8 @@ class MainController:
     def create_new_organism(self, name):
         """Creates a new organism and stores it as the active instance."""
         self.studied_organism = Organism(name)
+        
+
 
     def add_barcodes(self, barcode_type, primers):
         """Creates the list of instances of barcodes with their primers for each barcode type."""
@@ -53,14 +55,17 @@ class MainController:
         barcode_query = QUERIES_DICT[barcode_type]
         # Get the list of data from NCBI which includes fasta header and sequence
         sequence_list = bf.get_NCBI_Sequences(barcode_query, self.studied_organism.get_taxid())
-        # Create a list to store the barcodes
-        barcode_list = []
-        for sequence in sequence_list:
-            # Create a barcode for each list given the barcode type, fasta header, the sequence and the primers
-            barcode = Barcode(barcode_type, sequence[0], sequence[1], primers)
-            barcode_list.append(barcode)
-        # Filter the barcodes to avoid repetitions
-        self.barcodes = self.filter_barcodes(barcode_list, barcode_type)
+        if not sequence_list[0]:
+            return
+        else:
+            # Create a list to store the barcodes
+            barcode_list = []
+            for sequence in sequence_list:
+                # Create a barcode for each list given the barcode type, fasta header, the sequence and the primers
+                barcode = Barcode(barcode_type, sequence[0], sequence[1], primers)
+                barcode_list.append(barcode)
+            # Filter the barcodes to avoid repetitions
+            self.barcodes = self.filter_barcodes(barcode_list, barcode_type)
 
     def filter_barcodes(self, barcode_list, barcode_type):
         """Filters the list of barcodes so that all sequences are unique."""
@@ -81,8 +86,14 @@ class MainController:
     
     def search_for_barcodes(self, organism, barcode_type, primers):
         """Goes throught the process of creating a new organism and the barcode sequences requested by the user."""
-        self.create_new_organism(organism)
-        self.add_barcodes(barcode_type, primers)
+        try:
+            self.create_new_organism(organism)
+        except Exception as e:
+            self.error_pop_up(f'Error creating the organism: {e}')
+            return 1
+        else:
+            self.add_barcodes(barcode_type, primers)
+            return None
 
     def align_seqs(self, seq1, seq2):
         """Returns the alignment of two sequences"""
@@ -168,7 +179,11 @@ class MainController:
             # Write in logbook
             self.write_in_logbook(f'Starting BLAST search for a {barcode_type} barcode in the {rank} of {self.studied_organism.get_name()}.')
             # Run blast
-            self.blast_results = bf.blast(self.sequence, barcode_query, rank_name, megablast_use)
+            blast_results = bf.blast(self.sequence, barcode_query, rank_name, megablast_use)
+            if not blast_results[0]:
+                self.error_pop_up(f'BLAST error: {blast_results[1]}')
+                return 1
+            self.blast_results = blast_results
             self.blast_results_unique = bf.filter_data(self.blast_results)
             # Write in logbook
             self.write_in_logbook("BLAST search has finished.")
@@ -176,8 +191,10 @@ class MainController:
             self.results_pcts_stats = self.analyse_results_by_pcts()
             self.results_diffs_stats = self.analyse_results_by_diffs()
             self.main_window.show_results(self.results_diffs_stats)
+            return None
         else:
             self.error_pop_up("Select ONE barcode to BLAST")
+            return None
 
     def update_results(self, data_type, show_dissimilar):
         if not self.results_diffs_stats or not self.results_pcts_stats:
