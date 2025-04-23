@@ -432,7 +432,7 @@ class SearchTab(QFrame):
         # Logbook
         self.controller.write_in_logbook(f'Fetching {barcode_type} sequences for {organism}.')
         # Call controller to get barcodes
-        searching = self.controller.search_for_barcodes(organism, barcode_type, primers)
+        searching = self.controller.search_barcodes(organism, barcode_type, primers)
         if searching:
             self.controller.write_in_logbook(f'Error when searching for barcodes')
             return
@@ -513,6 +513,7 @@ class BlastTab(QFrame):
         # Tree button
         self.tree_button = QPushButton("🌳 Generate Tree")
         self.tree_button.setObjectName("regularButton")
+        self.tree_button.clicked.connect(self.show_tree)
         # Labels
         self.blast_mode_label = QLabel("BLAST mode")
         self.blast_mode_label.setObjectName("regularLabel")
@@ -571,12 +572,14 @@ class BlastTab(QFrame):
         blasting = self.controller.start_blast(blast_mode, taxonomy_rank)
         if blasting:
             self.controller.write_in_logbook("Error when using BLAST")
-        
     
     def update_button_action(self):
         data_type = DATA_TYPES[self.data_type_dropdown.currentIndex()]
         show_dissimilars = self.dissimilars_checkbox.isChecked()
         self.controller.update_results(data_type, show_dissimilars)
+    
+    def show_tree(self):
+        self.controller.create_tree()
 
 
 class LogBook(QFrame):

@@ -6,6 +6,7 @@ import services.bloom_functions as bf
 from models.organism import Organism
 from models.barcode import Barcode
 from models.alignment import get_seqs_alignment
+from models.phyloTree import PhyloTree
 from config.config_manager import ConfigManager
 from pathlib import Path
 
@@ -29,9 +30,9 @@ class MainController:
     """
     def __init__(self):
         """Initialises and instance of the class."""
-        self.studied_organism = None  # Track the active organism
-        self.barcodes = {}
         self.main_window = None
+        self.studied_organism = None       
+        self.barcodes = {}                            
         self.seqs_to_blast = {}
         self.blast_results = []
         self.blast_results_unique = []
@@ -39,16 +40,7 @@ class MainController:
         self.results_pcts_stats = []
         self.sequence = ""
 
-    def set_main_window(self, main_window):
-        """Set the main window"""
-        self.main_window = main_window
-
-    def create_new_organism(self, name):
-        """Creates a new organism and stores it as the active instance."""
-        self.studied_organism = Organism(name)
         
-
-
     def add_barcodes(self, barcode_type, primers):
         """Creates the list of instances of barcodes with their primers for each barcode type."""
         # Get the NCBI query given the barcode
@@ -84,10 +76,10 @@ class MainController:
             filtered_barcodes[barcode_type] = list(unique_barcodes.values())
         return filtered_barcodes
     
-    def search_for_barcodes(self, organism, barcode_type, primers):
+    def search_barcodes(self, organism, barcode_type, primers):
         """Goes throught the process of creating a new organism and the barcode sequences requested by the user."""
         try:
-            self.create_new_organism(organism)
+            self.studied_organism = Organism(organism)
         except Exception as e:
             self.error_pop_up(f'Error creating the organism: {e}')
             return 1
@@ -173,7 +165,7 @@ class MainController:
             # Get taxonomy rank name
             rank_name = ""
             for level in self.studied_organism.taxonomy:
-                if level['Rank'] == rank:
+                if level['Rank'].lower() == rank.lower():
                     rank_name = level['ScientificName']
                     break
             # Write in logbook
@@ -226,9 +218,9 @@ class MainController:
                 writer = csv.DictWriter(file, fieldnames=column_names)
                 writer.writeheader()
                 writer.writerows(self.blast_results)
-            print(f"Data successfully saved to {file_path}")
+            self.write_in_logbook(f"Data successfully saved to {file_path}")
         except Exception as e:
-            print(f"Error writing file: {e}")
+            self.error_pop_up(f"Error writing file: {e}")
 
     def analyse_results_by_pcts(self):
         # Create array of stats for identity percentage
@@ -236,7 +228,7 @@ class MainController:
         pcts_unique = [0]*(100 - PCT_THRESHOLD + 2)
         # Create an array of labels
         labels = ["100%"]
-        for i in range(1, len(pcts_all_hits)-1):
+        for i in range(0, len(pcts_all_hits)-2):
             labels.append(str(100-i) + "-" + str(100-i-1) + "%")
         labels.append("<" +  str(PCT_THRESHOLD) + "%")
         # Calculate stats for all hits
@@ -297,3 +289,26 @@ class MainController:
         self.sequence = ""
         # Clear gui data
         self.main_window.clear()
+    
+    def create_tree(self):
+        tree = PhyloTree(species_info=self.blast_results_unique, 
+                         target=self.studied_organism.get_name(),
+                         controller=self)
+        tree.show_tree()
+        
+    def show_alignment_from_tree(self, name):
+        alignment_text = ""
+        target = self.studied_organism.get_name()
+        target_seq = self.sequence
+        for element in self.blast_results:
+            if element["Scientific name"].lower() == name.lower():
+                sequence = element["Subject sequence"]
+                sequence = sequence.replace("-", "")
+                acc_num = element["Accession Number"]
+                alignment = get_seqs_alignment(target_seq, sequence)
+                alignment_text += acc_num + "\n" + str(alignment) + "\n\n\n"
+        self.main_window.create_popup_from_tree(alignment_text, target, name)
+
+        
+
+        

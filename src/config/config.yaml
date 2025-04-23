@@ -33,10 +33,10 @@ blast_modes:
   - "Megablast"
   - "Discontiguous blast"
 taxonomy_ranks:
-  - "genus"
-  - "tribe"
-  - "subfamily"
-  - "family"
+  - "Genus"
+  - "Tribe"
+  - "Subfamily"
+  - "Family"
 
 # Data visualisation
 data_types:

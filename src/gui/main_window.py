@@ -1,7 +1,7 @@
 """Contains the main window of the app."""
 from PyQt5.QtWidgets import QMainWindow, QVBoxLayout, QWidget, QSplitter, QMessageBox
 from PyQt5.QtCore import Qt
-from gui.widgets import CustomMenuBar, InputModule, OutputModule, LogBook, Header
+from gui.widgets import CustomMenuBar, InputModule, OutputModule, LogBook, Header, AlignmentPopup
 
 
 class MainWindow(QMainWindow):
@@ -20,7 +20,7 @@ class MainWindow(QMainWindow):
         super().__init__()
         # Add controller
         self.controller = controller
-        self.controller.set_main_window(self)
+        self.controller.main_window = self
         # Add main app where this window belongs
         self.app = app
         # Title
@@ -96,3 +96,10 @@ class MainWindow(QMainWindow):
         self.input_module.clear()
         self.output_module.clear()
         self.log_book.clear()
+    
+    def create_popup_from_tree(self, alignment_text, target_name, aligned_name):
+        # Create popup
+        popup = AlignmentPopup(alignment_text, target_name, aligned_name)
+        popup.show()
+        # Keep a reference to avoid garbage collection
+        self._popup = popup
