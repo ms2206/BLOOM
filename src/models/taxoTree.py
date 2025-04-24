@@ -7,7 +7,7 @@ from PyQt5.QtWidgets import QGraphicsSimpleTextItem
 from ete3 import faces, TreeStyle, NodeStyle, NCBITaxa, TextFace
 
 
-class PhyloTree:
+class TaxoTree:
     def __init__(self, species_info, target, controller):
         self.target = target
         self.controller = controller
@@ -20,8 +20,7 @@ class PhyloTree:
         for organism in species_info:
             name = organism["Scientific name"]
             id_pct = organism["Identity percentage"]
-            seq = organism["Subject sequence"]
-            species_dict[name] = [id_pct, seq]
+            species_dict[name] = id_pct
         return species_dict
 
     def create_tree(self):
@@ -62,10 +61,8 @@ class PhyloTree:
             node.add_face(label, column=0, position="branch-right")
         else:
             if node.sci_name in self.species_dict.keys():
-                id_pct = self.species_dict[node.sci_name][0]
-                seq = self.species_dict[node.sci_name][1]
+                id_pct = self.species_dict[node.sci_name]
                 node.add_feature('id_pct', id_pct)
-                node.add_feature('seq', seq) 
                 node.set_style(NodeStyle())
                 node.img_style["bgcolor"] = self.get_color_by_pct(id_pct, node)
                 face = faces.DynamicItemFace(self.leaf_name_face)
@@ -73,7 +70,7 @@ class PhyloTree:
     
     def leaf_name_face(self, node):
         """Face generator: returns an InteractiveText item showing the leaf name."""
-        id_pct = round(self.species_dict[node.name][0], 2)
+        id_pct = round(self.species_dict[node.name], 2)
         return InteractiveText(f'  {id_pct}', node, self.controller)
 
     def show_tree(self):

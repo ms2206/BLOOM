@@ -6,7 +6,7 @@ import services.bloom_functions as bf
 from models.organism import Organism
 from models.barcode import Barcode
 from models.alignment import get_seqs_alignment
-from models.phyloTree import PhyloTree
+from models.taxoTree import TaxoTree
 from config.config_manager import ConfigManager
 from pathlib import Path
 
@@ -40,28 +40,10 @@ class MainController:
         self.results_pcts_stats = []
         self.sequence = ""
 
-        
-    def add_barcodes(self, barcode_type, primers):
-        """Creates the list of instances of barcodes with their primers for each barcode type."""
-        # Get the NCBI query given the barcode
-        barcode_query = QUERIES_DICT[barcode_type]
-        # Get the list of data from NCBI which includes fasta header and sequence
-        sequence_list = bf.get_NCBI_Sequences(barcode_query, self.studied_organism.get_taxid())
-        if not sequence_list[0]:
-            return
-        else:
-            # Create a list to store the barcodes
-            barcode_list = []
-            for sequence in sequence_list:
-                # Create a barcode for each list given the barcode type, fasta header, the sequence and the primers
-                barcode = Barcode(barcode_type, sequence[0], sequence[1], primers)
-                barcode_list.append(barcode)
-            # Filter the barcodes to avoid repetitions
-            self.barcodes = self.filter_barcodes(barcode_list, barcode_type)
-
-    def filter_barcodes(self, barcode_list, barcode_type):
+    # PRIVATE METHODS
+    def _filter_barcodes(self, barcode_list, barcode_type):
         """Filters the list of barcodes so that all sequences are unique."""
-        # Dictionary to ster the barcodes with sequnce as key
+        # Dictionary to store the barcodes with sequnce as key
         unique_barcodes = {}
         filtered_barcodes = {}
         for barcode in barcode_list:
@@ -76,153 +58,7 @@ class MainController:
             filtered_barcodes[barcode_type] = list(unique_barcodes.values())
         return filtered_barcodes
     
-    def search_barcodes(self, organism, barcode_type, primers):
-        """Goes throught the process of creating a new organism and the barcode sequences requested by the user."""
-        try:
-            self.studied_organism = Organism(organism)
-        except Exception as e:
-            self.error_pop_up(f'Error creating the organism: {e}')
-            return 1
-        else:
-            self.add_barcodes(barcode_type, primers)
-            return None
-
-    def align_seqs(self, seq1, seq2):
-        """Returns the alignment of two sequences"""
-        return get_seqs_alignment(seq1, seq2)
-    
-    def add_new_barcode_tab(self, tab_name):
-        """Gets the information to create a new tab with barcodes"""
-        # Get the list of barcodes given the barcode name which is the tab name
-        barcodes_to_add = self.barcodes[tab_name]
-        barcodes_data = []
-        for barcode in barcodes_to_add:
-            # Append data to list to send to the barcodes tab
-            data = (str(barcode), barcode.get_headers()[0], int(barcode), barcode.get_primers_intervals())
-            barcodes_data.append(data)
-        # Call main window to create the tab
-        self.main_window.add_new_barcode_tab(tab_name, barcodes_data)
-    
-    def write_in_logbook(self, text):
-        """Calls the main window to write in the logbook"""
-        self.main_window.write_in_logbook(text)
-    
-    def load_species_list(self):
-        """Loads the list of species names from data/species_list.txt."""
-        # Get the path to the current script (MainController.py)
-        current_file = Path(__file__)
-        # Navigate to the target file relative to the current file
-        file_path = current_file.parent.parent / "assets" / "data" / "species_list.txt"
-        # Read the contents
-        try:
-            with file_path.open("r", encoding="utf-8") as f:
-                return [line.strip() for line in f if line.strip()]
-        except FileNotFoundError:
-            print(f"File not found: {file_path}")
-            return None
-    
-    def get_icon(self):
-        """Returns the path to the BLOOM icon"""
-        # Get the path to the current script (MainController.py)
-        current_file = Path(__file__)
-        # Navigate to the target file relative to the current file
-        file_path = current_file.parent.parent / "assets" / "icons" / "bloom_icon.ico"
-        return str(file_path)
-
-    def get_logo(self):
-        """Returns the path to the BLOOM png logo"""
-        # Get the path to the current script (MainController.py)
-        current_file = Path(__file__)
-        # Navigate to the target file relative to the current file
-        file_path = current_file.parent.parent / "assets" / "images" / "bloom_logo.png"
-        return str(file_path)
-    
-    def load_style(self):
-        """Loads the style sheet."""
-        # Get the path to the current script (MainController.py)
-        current_file = Path(__file__)
-        # Navigate to the target file relative to the current file
-        file_path = current_file.parent.parent / "assets" / "styles" / "style.qss"
-        with open(file_path, "r") as f:
-            return f.read()
-    
-    def add_sequence_to_blast(self, sequence, type):
-        self.seqs_to_blast[type] = sequence
-    
-    def remove_sequence_to_blast(self, type):
-        if type in self.seqs_to_blast.keys():
-            del self.seqs_to_blast[type]
-    
-    def start_blast(self, blast_mode, rank):
-        if len(self.seqs_to_blast.keys()) == 1:
-            # Get barcode query from tab name and list of queries
-            barcode_type = list(self.seqs_to_blast.keys())[0]
-            barcode_query = QUERIES_DICT[barcode_type]
-            # Get sequence
-            self.sequence = self.seqs_to_blast[barcode_type]
-            # Check if user wants to use megablast
-            megablast_use = True if blast_mode == "Megablast" else False
-            # Get taxonomy rank name
-            rank_name = ""
-            for level in self.studied_organism.taxonomy:
-                if level['Rank'].lower() == rank.lower():
-                    rank_name = level['ScientificName']
-                    break
-            # Write in logbook
-            self.write_in_logbook(f'Starting BLAST search for a {barcode_type} barcode in the {rank} of {self.studied_organism.get_name()}.')
-            # Run blast
-            blast_results = bf.blast(self.sequence, barcode_query, rank_name, megablast_use)
-            if not blast_results[0]:
-                self.error_pop_up(f'BLAST error: {blast_results[1]}')
-                return 1
-            self.blast_results = blast_results
-            self.blast_results_unique = bf.filter_data(self.blast_results)
-            # Write in logbook
-            self.write_in_logbook("BLAST search has finished.")
-            # Analyse results
-            self.results_pcts_stats = self.analyse_results_by_pcts()
-            self.results_diffs_stats = self.analyse_results_by_diffs()
-            self.main_window.show_results(self.results_diffs_stats)
-            return None
-        else:
-            self.error_pop_up("Select ONE barcode to BLAST")
-            return None
-
-    def update_results(self, data_type, show_dissimilar):
-        if not self.results_diffs_stats or not self.results_pcts_stats:
-            self.error_pop_up("Missing BLAST results")
-            return
-        # Create empty results holder
-        results = None
-        # Check if the user wants differences or percentages
-        if data_type == "Number of differences":
-            # Don't pass the last element of each tuple in results if user does not want
-            # to see dissimilar hits
-            if show_dissimilar:
-                results = self.results_diffs_stats
-            else:
-                results = tuple(element[:-1] for element in self.results_diffs_stats)
-        else:
-            if show_dissimilar:
-                results = self.results_pcts_stats
-            else:
-                results = tuple(element[:-1] for element in self.results_pcts_stats)
-        # Return results
-        self.main_window.show_results(results)
-        
-    def write_csv(self, file_path):
-        column_names = self.blast_results[0].keys()
-        try:
-            # Write to the file
-            with open(file_path, mode='w', newline='', encoding='utf-8') as file:
-                writer = csv.DictWriter(file, fieldnames=column_names)
-                writer.writeheader()
-                writer.writerows(self.blast_results)
-            self.write_in_logbook(f"Data successfully saved to {file_path}")
-        except Exception as e:
-            self.error_pop_up(f"Error writing file: {e}")
-
-    def analyse_results_by_pcts(self):
+    def _analyse_results_by_pcts(self):
         # Create array of stats for identity percentage
         pcts_all_hits = [0]*(100 - PCT_THRESHOLD + 2)
         pcts_unique = [0]*(100 - PCT_THRESHOLD + 2)
@@ -254,7 +90,7 @@ class MainController:
         # Return results
         return (labels, pcts_all_hits, pcts_unique)
         
-    def analyse_results_by_diffs(self):
+    def _analyse_results_by_diffs(self):
         # Calculate the maximum number of differences given threshold percentage
         max_diffs = int(math.ceil(len(self.sequence)*(100 - PCT_THRESHOLD)/100))
         # Create array to count the number of hits or species with a specific number of hits
@@ -272,11 +108,165 @@ class MainController:
             index = datapoint["Differences"] if datapoint["Differences"] <= max_diffs else (max_diffs+1)
             diffs_unique[index] += 1  
         # Return results
-        return (labels, diffs_all_hits, diffs_unique) 
+        return (labels, diffs_all_hits, diffs_unique)
+
+    # PUBLIC METHODS
+    ## Searching barcodes 
+    def search_barcodes(self, organism, barcode_type, primers):
+        """Goes throught the process of creating a new organism and the barcode sequences requested by the user."""
+        try:
+            self.studied_organism = Organism(organism)
+        except Exception as e:
+            self.error_pop_up(f'Error creating the organism: {e}')
+            return 1
+        else:
+            # Get the NCBI query given the barcode
+            barcode_query = QUERIES_DICT[barcode_type]
+            # Get the list of data from NCBI which includes fasta header and sequence
+            sequence_list = bf.get_NCBI_Sequences(barcode_query, self.studied_organism.taxid)
+            # Check if there has been an error getting the barcodes
+            if not sequence_list[0]:
+                # Display pop up error emssage
+                self.error_pop_up(f'Error when searching barcodes: {sequence_list[1]}')
+                return 1
+            else:
+                # Create a list to store the barcodes
+                barcode_list = []
+                for sequence in sequence_list:
+                    # Create a barcode for each list given the barcode type, fasta header, the sequence and the primers
+                    barcode = Barcode(barcode_type, sequence[0], sequence[1], primers)
+                    barcode_list.append(barcode)
+                # Filter the barcodes to avoid repetitions
+                self.barcodes = self._filter_barcodes(barcode_list, barcode_type)
+
+    def add_new_barcode_tab(self, tab_name):
+        """Gets the information to create a new tab with barcodes"""
+        # Get the list of barcodes given the barcode name which is the tab name
+        barcodes_to_add = self.barcodes[tab_name]
+        barcodes_data = []
+        for barcode in barcodes_to_add:
+            # Append data to list to send to the barcodes tab
+            data = (str(barcode), barcode.get_headers()[0], int(barcode), barcode.get_primers_intervals())
+            barcodes_data.append(data)
+        # Call main window to create the tab
+        self.main_window.add_new_barcode_tab(tab_name, barcodes_data)
     
+    ## Selecting barcodes
+    def add_sequence_to_blast(self, sequence, barcode_type):
+        """Adds a new sequence to blast to the list given its barcode type"""
+        self.seqs_to_blast[barcode_type] = sequence
+    
+    def remove_sequence_to_blast(self, type):
+        if type in self.seqs_to_blast.keys():
+            del self.seqs_to_blast[type]
+    
+    ## Getting results from BLAST
+    def start_blast(self, blast_mode, rank):
+        if len(self.seqs_to_blast.keys()) == 1:
+            # Get barcode query from tab name and list of queries
+            barcode_type = list(self.seqs_to_blast.keys())[0]
+            barcode_query = QUERIES_DICT[barcode_type]
+            # Get sequence
+            self.sequence = self.seqs_to_blast[barcode_type]
+            # Check if user wants to use megablast
+            megablast_use = True if blast_mode == "Megablast" else False
+            # Get taxonomy rank name
+            rank_name = ""
+            for level in self.studied_organism.taxonomy:
+                if level['Rank'].lower() == rank.lower():
+                    rank_name = level['ScientificName']
+                    break
+            # Write in logbook
+            self.write_in_logbook(f'Starting BLAST search for a {barcode_type} barcode in the {rank} of {self.studied_organism.name}.')
+            # Run blast
+            blast_results = bf.blast(self.sequence, barcode_query, rank_name, megablast_use)
+            if not blast_results[0]:
+                self.error_pop_up(f'BLAST error: {blast_results[1]}')
+                return 1
+            self.blast_results = blast_results
+            self.blast_results_unique = bf.filter_data(self.blast_results)
+            # Write in logbook
+            self.write_in_logbook("BLAST search has finished.")
+            # Analyse results
+            self.results_pcts_stats = self._analyse_results_by_pcts()
+            self.results_diffs_stats = self._analyse_results_by_diffs()
+            self.main_window.show_results(self.results_diffs_stats)
+            return None
+        else:
+            self.error_pop_up("Select ONE barcode to BLAST")
+            return None
+
+    def update_results(self, data_type, show_dissimilar):
+        if not self.results_diffs_stats or not self.results_pcts_stats:
+            self.error_pop_up("Missing BLAST results")
+            return
+        # Create empty results holder
+        results = None
+        # Check if the user wants differences or percentages
+        if data_type == "Number of differences":
+            # Don't pass the last element of each tuple in results if user does not want
+            # to see dissimilar hits
+            if show_dissimilar:
+                results = self.results_diffs_stats
+            else:
+                results = tuple(element[:-1] for element in self.results_diffs_stats)
+        else:
+            if show_dissimilar:
+                results = self.results_pcts_stats
+            else:
+                results = tuple(element[:-1] for element in self.results_pcts_stats)
+        # Return results
+        self.main_window.show_results(results)
+
+    ## Using taxonomy tree
+    def create_tree(self):
+        if self.blast_results_unique:
+            try:
+                tree = TaxoTree(species_info=self.blast_results_unique, 
+                                target=self.studied_organism.name,
+                                controller=self)
+                tree.show_tree()
+                self.write_in_logbook(f'Taxonomy tree created for {self.studied_organism.name}')
+            except Exception as e:
+                self.error_pop_up(f'Error creating taxonomy tree: {e}')
+        else:
+            self.error_pop_up("Missing BLAST results")
+        
+    def show_alignment_from_tree(self, name):
+        alignment_text = ""
+        target = self.studied_organism.name
+        target_seq = self.sequence
+        for element in self.blast_results:
+            if element["Scientific name"].lower() == name.lower():
+                sequence = element["Subject sequence"]
+                sequence = sequence.replace("-", "")
+                acc_num = element["Accession Number"]
+                alignment = self.align_seqs(target_seq, sequence)
+                alignment_text += acc_num + "\n" + str(alignment) + "\n\n\n"
+        self.main_window.create_popup_from_tree(alignment_text, target, name)
+    
+    ## Creating CSV
+    def write_csv(self, file_path):
+        column_names = self.blast_results[0].keys()
+        try:
+            # Write to the file
+            with open(file_path, mode='w', newline='', encoding='utf-8') as file:
+                writer = csv.DictWriter(file, fieldnames=column_names)
+                writer.writeheader()
+                writer.writerows(self.blast_results)
+            self.write_in_logbook(f"Data successfully saved to {file_path}")
+        except Exception as e:
+            self.error_pop_up(f"Error writing csv file: {e}") 
+    
+    ## Messaging
     def error_pop_up(self, message):
         self.main_window.show_error(message)
     
+    def write_in_logbook(self, text):
+        """Calls the main window to write in the logbook"""
+        self.main_window.write_in_logbook(text)
+
+    ## Others
     def clear(self):
         # Clear own data
         self.studied_organism = None  # Track the active organism
@@ -290,25 +280,52 @@ class MainController:
         # Clear gui data
         self.main_window.clear()
     
-    def create_tree(self):
-        tree = PhyloTree(species_info=self.blast_results_unique, 
-                         target=self.studied_organism.get_name(),
-                         controller=self)
-        tree.show_tree()
-        
-    def show_alignment_from_tree(self, name):
-        alignment_text = ""
-        target = self.studied_organism.get_name()
-        target_seq = self.sequence
-        for element in self.blast_results:
-            if element["Scientific name"].lower() == name.lower():
-                sequence = element["Subject sequence"]
-                sequence = sequence.replace("-", "")
-                acc_num = element["Accession Number"]
-                alignment = get_seqs_alignment(target_seq, sequence)
-                alignment_text += acc_num + "\n" + str(alignment) + "\n\n\n"
-        self.main_window.create_popup_from_tree(alignment_text, target, name)
+    def align_seqs(self, seq1, seq2):
+        """Returns the alignment of two sequences"""
+        return get_seqs_alignment(seq1, seq2)    
 
-        
+    def load_species_list(self):
+        """Loads the list of species names from data/species_list.txt."""
+        # Get the path to the current script (MainController.py)
+        current_file = Path(__file__)
+        # Navigate to the target file relative to the current file
+        file_path = current_file.parent.parent / "assets" / "data" / "species_list.txt"
+        # Read the contents
+        try:
+            with file_path.open("r", encoding="utf-8") as f:
+                return [line.strip() for line in f if line.strip()]
+        except FileNotFoundError:
+            self.error_pop_up("Error getting list of species. File not found")
+            return None
+    
+    def get_icon(self):
+        """Returns the path to the BLOOM icon"""
+        # Get the path to the current script (MainController.py)
+        current_file = Path(__file__)
+        # Navigate to the target file relative to the current file
+        file_path = current_file.parent.parent / "assets" / "icons" / "bloom_icon.ico"
+        return str(file_path)
 
+    def get_logo(self):
+        """Returns the path to the BLOOM png logo"""
+        # Get the path to the current script (MainController.py)
+        current_file = Path(__file__)
+        # Navigate to the target file relative to the current file
+        file_path = current_file.parent.parent / "assets" / "images" / "bloom_logo.png"
+        return str(file_path)
+    
+    def load_style(self):
+        """Loads the style sheet."""
+        # Get the path to the current script (MainController.py)
+        current_file = Path(__file__)
+        # Navigate to the target file relative to the current file
+        file_path = current_file.parent.parent / "assets" / "styles" / "style.qss"
+        try:
+            with open(file_path, "r") as f:
+                return f.read()
+        except FileNotFoundError:
+            self.error_pop_up("Error getting style sheet. File not found")
+            return None
+    
+    
         
