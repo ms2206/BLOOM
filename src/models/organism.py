@@ -4,8 +4,6 @@
 
 import services.bloom_functions as bf
 
-from models.barcode import Barcode
-
 
 class Organism:
     """Organism to be studied by the user.

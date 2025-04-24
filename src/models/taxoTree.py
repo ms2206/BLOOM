@@ -4,10 +4,11 @@ With interactive leaf names: click to print name in console
 """
 from PyQt5 import QtCore
 from PyQt5.QtWidgets import QGraphicsSimpleTextItem
+from PyQt5.QtCore import QThread, pyqtSignal
 from ete3 import faces, TreeStyle, NodeStyle, NCBITaxa, TextFace
 
 
-class TaxoTree:
+class TaxoTree():
     def __init__(self, species_info, target, controller):
         self.target = target
         self.controller = controller
@@ -91,6 +92,7 @@ class TaxoTree:
         for node in tree.traverse():
             if node.is_leaf() and node.sci_name not in self.species_dict.keys():
                 node.delete()
+    
                 
 
 

@@ -2,7 +2,7 @@
 from PyQt5.QtWidgets import QMainWindow, QVBoxLayout, QWidget, QSplitter, QMessageBox
 from PyQt5.QtCore import Qt
 from gui.widgets import CustomMenuBar, InputModule, OutputModule, LogBook, Header, AlignmentPopup
-
+import os, signal
 
 class MainWindow(QMainWindow):
     """Main window of the app.
@@ -103,3 +103,6 @@ class MainWindow(QMainWindow):
         popup.show()
         # Keep a reference to avoid garbage collection
         self._popup = popup
+    
+    def closeEvent(self, event):
+        os.kill(os.getpid(), signal.SIGTERM)

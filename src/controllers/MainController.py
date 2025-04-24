@@ -244,7 +244,7 @@ class MainController:
                 alignment = self.align_seqs(target_seq, sequence)
                 alignment_text += acc_num + "\n" + str(alignment) + "\n\n\n"
         self.main_window.create_popup_from_tree(alignment_text, target, name)
-    
+
     ## Creating CSV
     def write_csv(self, file_path):
         column_names = self.blast_results[0].keys()
