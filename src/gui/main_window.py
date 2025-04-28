@@ -21,7 +21,7 @@ class MainWindow(QMainWindow):
         # Add controller
         self.controller = controller
         self.controller.main_window = self
-        # Add main app where this window belongs
+        # App
         self.app = app
         # Title
         self.setWindowTitle("BLOOM")        

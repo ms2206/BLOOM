@@ -5,8 +5,8 @@ import math
 import services.bloom_functions as bf
 from models.organism import Organism
 from models.barcode import Barcode
-from models.alignment import get_seqs_alignment
-from models.taxoTree import TaxoTree
+from services.alignment import get_seqs_alignment
+from models.taxo_tree import TaxoTree
 from config.config_manager import ConfigManager
 from pathlib import Path
 
@@ -49,7 +49,7 @@ class MainController:
         for barcode in barcode_list:
             # Check if the sequence is already in the dict
             if str(barcode) in unique_barcodes:
-                for header in barcode.get_headers():
+                for header in barcode.headers:
                     # Append the header of the repeated barcode to the unique barcode
                     unique_barcodes[str(barcode)].add_header(header)
             else:
@@ -146,7 +146,7 @@ class MainController:
         barcodes_data = []
         for barcode in barcodes_to_add:
             # Append data to list to send to the barcodes tab
-            data = (str(barcode), barcode.get_headers()[0], int(barcode), barcode.get_primers_intervals())
+            data = (str(barcode), barcode.headers[0], int(barcode), barcode.primer_coords)
             barcodes_data.append(data)
         # Call main window to create the tab
         self.main_window.add_new_barcode_tab(tab_name, barcodes_data)

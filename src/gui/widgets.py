@@ -29,7 +29,6 @@ class PieChartWidget(QWidget):
         self.animation_progress = 0.0
         self.start_angle_offset = -90 # Start drawing from the top
         self.total_angle = 360
-        self.timer = None
 
     def set_progress(self, progress):
         self.animation_progress = progress
@@ -149,16 +148,16 @@ class CombinedChartWindow(QWidget):
         # Colour palette
         palette = self.get_color_palette(len(self.data))
         # Pie chart
-        self.pieChart = PieChartWidget(values=self.data, colours=palette)
+        self.pie_chart = PieChartWidget(values=self.data, colours=palette)
         # Bar chart
-        self.barChart = BarChartWidget(values=self.data, labels=self.labels, colours=palette, data_type=data_type)
+        self.bar_chart = BarChartWidget(values=self.data, labels=self.labels, colours=palette, data_type=data_type)
         # Splitter
         self.main_splitter = QSplitter(Qt.Horizontal)
         self.graphs_splitter = QSplitter(Qt.Horizontal)
         """Splitters layout"""
         # Splitter for graphs
-        self.graphs_splitter.addWidget(self.pieChart)
-        self.graphs_splitter.addWidget(self.barChart)
+        self.graphs_splitter.addWidget(self.pie_chart)
+        self.graphs_splitter.addWidget(self.bar_chart)
         self.graphs_splitter.setSizes([500, 500])
         self.graphs_splitter.setStretchFactor(1, 1)
         # Main splitter
@@ -185,8 +184,8 @@ class CombinedChartWindow(QWidget):
     def update_animation(self):
         self.elapsed += self.animation_interval
         progress = min(self.elapsed / ANIMATION_DURATION, 1.0)
-        self.pieChart.set_progress(progress)
-        self.barChart.set_progress(progress)
+        self.pie_chart.set_progress(progress)
+        self.bar_chart.set_progress(progress)
         if progress >= 1.0:
             self.timer.stop()
     
@@ -239,11 +238,13 @@ class CustomMenuBar(QMenuBar):
         clear_action.triggered.connect(self.clear_workspace)
         self.file_menu.addAction(clear_action)
         # Settings Menu
+        """
         self.settings_menu = self.addMenu("Settings")
         undo_action = QAction("Undo", self)     # Currently does nothing
         redo_action = QAction("Redo", self)     # Currently does nothing
         self.settings_menu.addAction(undo_action)
         self.settings_menu.addAction(redo_action)
+        """
         # Help Menu
         self.help_menu = self.addMenu("Help")
     
@@ -285,8 +286,6 @@ class Header(QWidget):
         super().__init__()
         # Add main window
         self.main_window = main_window
-        # Add controller
-        self.controller = controller
         """ Add widgets """
         # Add Button
         self.toggle_button = QToolButton()
@@ -896,10 +895,7 @@ class ResultsTab(QScrollArea):
         # Set layout
         self.result_container.setLayout(self.layout)
         self.setWidget(self.result_container)
-    
-    def clear(self):
-        self.clear_layout()
-        
+           
 
 class BarcodesTab(QScrollArea):
     """Tab to display the barcode cards.
@@ -1039,5 +1035,5 @@ class OutputModule(QTabWidget):
         while self.count() > 1:
             self.removeTab(1)
         # Delete results tab info
-        self.results_tab.clear()
+        self.results_tab.clear_layout()
           
