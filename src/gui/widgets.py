@@ -432,7 +432,7 @@ class SearchTab(QFrame):
         self.species_input.textEdited.connect(self.update_species_completer)
         # Barcode selection dropdown
         self.barcode_dropdown = QComboBox()
-        self.barcode_dropdown.addItem("Choose barcode...")
+        self.barcode_dropdown.addItem("Choose barcode...")      # Add an empty option
         self.barcode_dropdown.model().item(0).setEnabled(False)
         self.barcode_dropdown.model().item(0).setForeground(QColor('gray'))
         self.barcode_dropdown.addItems(BARCODE_LIST)
@@ -488,16 +488,18 @@ class SearchTab(QFrame):
     
     def search_button_action(self):
         """Gathers the data input by the user and commands the controller to search."""
-        # Get organism, barcode type and primers chosen by the user
+        # Get organism and primers chosen by the user
         organism = self.species_input.text()
-        barcode_type = BARCODE_LIST[self.barcode_dropdown.currentIndex()]
+        index = self.barcode_dropdown.currentIndex()
         f_primer = self.f_primer_input.toPlainText()
         r_primer = self.r_primer_input.toPlainText()
         primers = (f_primer, r_primer)
-        if not organism or not primers:
+        if not organism or not f_primer or not r_primer or index == 0:
             message = "One or more fields are incomplete."
             self.controller.error_pop_up(message)
             return
+        # Get barcode type
+        barcode_type = BARCODE_LIST[index-1]
         # Logbook
         self.controller.write_in_logbook(f'Fetching {barcode_type} sequences for {organism}.')
         # Call controller to get barcodes
@@ -522,7 +524,13 @@ class SearchTab(QFrame):
     
     def autocomplete_primers(self):
         "Autocompletes the primers boxes with the primers of the selected barcode"
-        barcode_type = BARCODE_LIST[self.barcode_dropdown.currentIndex()]
+        # Get index
+        index = self.barcode_dropdown.currentIndex()
+        # If index is first option return (empty option)
+        if index == 0:
+            return
+        # Get barcode type from list to get primers
+        barcode_type = BARCODE_LIST[index-1]
         primers = PRIMERS_DICT[barcode_type]
         self.f_primer_input.setText(primers[0])
         self.r_primer_input.setText(primers[1])
