@@ -1,5 +1,5 @@
-"""Contaings path to config file and ConfigManager class.
-
+"""
+Contaings path to config file and ConfigManager class.
 """
 
 import os
@@ -14,9 +14,9 @@ class ConfigManager:
 
     def __init__(self):
         """Creates instance by loading data from file"""
-        self.config = self.load_config()
+        self.config = self._load_config()
 
-    def load_config(self):
+    def _load_config(self):
         """Loads the user configuration."""
         with open(CONFIG_PATH, 'r') as file:
             return yaml.safe_load(file)
@@ -38,7 +38,7 @@ class ConfigManager:
         return list(barcode['name'] for barcode in barcodes)
     
     def get_barcodes_queries(self):
-        """Access the barcode strucure to return a dict with the queries for each barcode"""
+        """Access the barcode structure to return a dict with the queries for each barcode"""
         barcodes = self.get('barcodes', [])
         queries_dict = {}
         for barcode in barcodes:
@@ -48,7 +48,7 @@ class ConfigManager:
         return queries_dict
 
     def get_barcodes_primers(self):
-        """Access the barcode strucure to return a dict with the primers for each barcode"""
+        """Access the barcode structure to return a dict with the primers for each barcode"""
         barcodes = self.get('barcodes', [])
         primers_dict = {}
         for barcode in barcodes:

@@ -1,4 +1,6 @@
-"""Contains the main controller which manages the GUI and the back-end"""
+"""
+Contains the main controller which manages the GUI and the models/services.
+"""
 
 import csv
 import math
@@ -326,6 +328,3 @@ class MainController:
         except FileNotFoundError:
             self.error_pop_up("Error getting style sheet. File not found")
             return None
-    
-    
-        

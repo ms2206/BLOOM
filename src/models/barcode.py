@@ -1,5 +1,5 @@
-"""Contains Barcode Class and dictionary for barcode queries.
- 
+"""
+Contains Barcode Class and dictionary for barcode queries. 
 """
 
 from services.alignment import find_primers 
@@ -60,14 +60,3 @@ class Barcode:
     def add_header(self, new_header):
         """Adds a header to the list of headers stored in the object"""
         self.headers.append(new_header)
-
-    
-
-
-    
-    
-
-
-
-    
-    

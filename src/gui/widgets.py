@@ -1,4 +1,7 @@
-"""Contains the declaration of all custom widgets as classes."""
+"""
+Contains the declaration of all custom widgets as classes for the GUI.
+"""
+
 from datetime import datetime
 from PyQt5.QtCore import Qt, QStringListModel, QTimer, QRectF
 from PyQt5.QtGui import QTextCursor, QTextCharFormat, QColor, QPainter, QBrush, QFont
@@ -17,9 +20,27 @@ TAXONOMY_RANKS = config.get('taxonomy_ranks')
 # Results visualisation configuration
 DATA_TYPES = config.get('data_types')
 ANIMATION_DURATION = config.get('animation_duration')
+# Github link for help
+GITHUB_LINK = config.get('github_link')
 
 
 class PieChartWidget(QWidget):
+    """Widget used to display a donut chart with the stats for the results obtained.
+
+    Displays a donut chart with sectors representing how many hits/species have a specificic number
+    of differences or fall in a range of identity percentages. In the middle there is a text label with 
+    the total number of hits/species recorded. Each sector's size is dependent on the value linked to it.
+    Each sector has a colour that ranges from red (for similar hits) to green (dissimilar hits).
+    The chart is animated with a pan movement so that every time the results tab the chart is drawn again for
+    aesthetic purposes.
+
+    Arguments:
+        values (list): list of values to display. Each sector in the chart has a value
+        colours (list): list of colours for each value. Each sector in the chart has a colour
+        animation_progress (double): used to track how much has been animated
+        start_angle_offset (int): starting position of the animation.
+        total_angle (int): total angle that is goint go be covered by the chart
+    """
     def __init__(self, values, colours):
         super().__init__()
         # Set data and colours
@@ -31,10 +52,12 @@ class PieChartWidget(QWidget):
         self.total_angle = 360
 
     def set_progress(self, progress):
+        """Sets the current progress of the animation."""
         self.animation_progress = progress
         self.update()
 
     def paintEvent(self, event):
+        """Paints the chart for the current progress."""
         # Define painter object
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
@@ -84,21 +107,40 @@ class PieChartWidget(QWidget):
 
 
 class BarChartWidget(QWidget):
+    """Widget used to display a bar chart with the stats for the results obtained.
+
+    Displays a histogram with bars representing how many hits/species have a specificic number
+    of differences or fall in a range of identity percentages. The X axis has a label to interpret
+    what bars represent. Each bar's height is dependent on the value linked to it.
+    Each bar has a colour that ranges from red (for similar hits) to green (dissimilar hits).
+    The chart is animated by increasing gradually the bars' heights so that every time the results 
+    tab the chart is drawn again for aesthetic purposes.
+
+    Arguments:
+        labels (list): list of labels for the x-acxis.
+        values (list): list of values to display. Each sector in the chart has a value.
+        colours (list): list of colours for each value. Each sector in the chart has a colour.
+        title (str): title for the x-axis
+        animation_progress (double): used to track how much has been animated.
+    """
     def __init__(self, values, labels, colours, data_type):
         super().__init__()
         # Define data numbers, colours
         self.labels = labels
         self.values = values
         self.colours = colours
+        # Define the title given the type of data to represent
         self.title = "Number of differences" if data_type == "differences" else "Percentage of identity"
         # Animation parameters
         self.animation_progress = 0.0
 
     def set_progress(self, progress):
+        """Sets the current progress of the animation."""
         self.animation_progress = progress
         self.update()
 
     def paintEvent(self, event):
+        """Paints the chart for the current progress."""
         # Define painter
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
@@ -136,6 +178,15 @@ class BarChartWidget(QWidget):
 
 
 class CombinedChartWindow(QWidget):
+    """Widget that contains one line of results to be displayed in the results tab.
+
+    This widget containsa a title, a single pie chart widget and a single bar chart widget.
+
+    Arguments: 
+        data (list): values to be displayed
+        labels (list): list of labels for the x-axis in the bar chart
+        title (str): title of the section
+    """
     def __init__(self, data, labels, title, data_type):
         super().__init__()
         self.data = data
@@ -178,31 +229,43 @@ class CombinedChartWindow(QWidget):
         self.restart_animation()
 
     def restart_animation(self):
+        """Start the animation again from the beginning."""
         self.elapsed = 0
         self.timer.start(self.animation_interval)
 
     def update_animation(self):
+        """Updates the animation given the time elapsed."""
         self.elapsed += self.animation_interval
         progress = min(self.elapsed / ANIMATION_DURATION, 1.0)
         self.pie_chart.set_progress(progress)
         self.bar_chart.set_progress(progress)
+        # Stop when progress is completed
         if progress >= 1.0:
             self.timer.stop()
     
     def get_color_palette(self, n):
+        """
+        Creates a list of colours given the number of values to represent. The colour palette
+        goes from red to green passing trhough yellow.
+        """
+        # Return a single colour in case there is only one value
         if n == 1:
             return [QColor(*(255, 0, 97))]
+        # Calculate step between colours
         step = int(510/(n-1))
-        f_palette = []
-        r_palette = []
+        f_palette = []  # First half of the palette
+        r_palette = []  # Second half of the palette
+        # Get colour progression 
         for i in range(int(n/2)):
-            f_colour = (255, 0+i*step, 97)
-            r_colour = (0+i*step, 255, 97)
+            f_colour = (255, 0+i*step, 97) # Starts in red and goes to yellow
+            r_colour = (0+i*step, 255, 97) # Starts in green and goes to yellow
             f_palette.append(QColor(*f_colour))
             r_palette.append(QColor(*r_colour))
+        # Compensate with a yellow colour if the number of values is odd
         if n%2 == 1:
             colour = (255, 255, 97)
             f_palette.append(QColor(*colour))    
+        # Append reversed second half of the palette
         r_palette.reverse()
         palette = f_palette + r_palette
         return palette
@@ -237,18 +300,17 @@ class CustomMenuBar(QMenuBar):
         clear_action = QAction("Clear workspace", self)
         clear_action.triggered.connect(self.clear_workspace)
         self.file_menu.addAction(clear_action)
-        # Settings Menu
-        """
-        self.settings_menu = self.addMenu("Settings")
-        undo_action = QAction("Undo", self)     # Currently does nothing
-        redo_action = QAction("Redo", self)     # Currently does nothing
-        self.settings_menu.addAction(undo_action)
-        self.settings_menu.addAction(redo_action)
-        """
         # Help Menu
         self.help_menu = self.addMenu("Help")
+        help_action = QAction('Help', self)
+        help_action.triggered.connect(self.show_help_message)
+        self.help_menu.addAction(help_action)
     
     def write_csv(self):
+        """
+        Creates a pop up window to select name and location of csv file and passes the
+        info to the controller to create and save the csv file.
+        """
         # Open the Save File dialog
         options = QFileDialog.Options()
         file_path, _ = QFileDialog.getSaveFileName(None,
@@ -266,7 +328,12 @@ class CustomMenuBar(QMenuBar):
         self.controller.write_csv(file_path)
     
     def clear_workspace(self):
+        """Commands the controller to clean the entire workspace."""
         self.controller.clear()
+    
+    def show_help_message(self):
+        message = f'Check this link for more info:\n{GITHUB_LINK}'
+        QMessageBox.information(self, "Help", message)
 
 
 class Header(QWidget):
@@ -365,6 +432,9 @@ class SearchTab(QFrame):
         self.species_input.textEdited.connect(self.update_species_completer)
         # Barcode selection dropdown
         self.barcode_dropdown = QComboBox()
+        self.barcode_dropdown.addItem("Choose barcode...")
+        self.barcode_dropdown.model().item(0).setEnabled(False)
+        self.barcode_dropdown.model().item(0).setForeground(QColor('gray'))
         self.barcode_dropdown.addItems(BARCODE_LIST)
         self.barcode_dropdown.activated.connect(self.autocomplete_primers)
         # Input for forward primer
@@ -458,6 +528,7 @@ class SearchTab(QFrame):
         self.r_primer_input.setText(primers[1])
     
     def clear(self):
+        """Deletes any info written by the user in the module and enables the organism name to be changed."""
         self.species_input.setEnabled(True)
         self.species_input.setText("")
         self.f_primer_input.setText("")

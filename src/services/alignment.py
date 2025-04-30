@@ -1,10 +1,9 @@
-"""Contaings aligners configurations and functions to align nucleotide sequences.
-
+"""
+Contaings aligners configurations and functions to align nucleotide sequences.
 """
 
 from Bio import Align
 from Bio.Seq import Seq
-
 from config.config_manager import ConfigManager
 
 # Creates instance of ConfigManager to get aligner values from config file
@@ -35,24 +34,40 @@ def find_primers(sequence, primers):
     Returns:
         List of tuples with the intervals where the nucleotide sequence is the same as the primer
     """
+    # List of coordinates
     coordinates = []
     for i, primer in enumerate(primers):
-        primer_seq = Seq(primer) if not i else Seq(primer).reverse_complement()
+        # Get sequence for forwards primer or reverse complement for reverse primer
+        primer_seq = Seq(primer) if i==0 else Seq(primer).reverse_complement()
+        # Parameters to determine the best alignment
         best_score = 0
-        best_coords = [(0, 0)] if not i else [(len(sequence), len(sequence))] # Default values if there is no alignment
+        best_coords = [(0, 0)] if i==0 else [(len(sequence), len(sequence))] # Default values if there is no alignment
+        # Use local aligner to find primers
         alignments = primer_aligner.align(sequence, primer_seq)
         for alignment in alignments:
-            gaps = alignment.counts()[0]
-            mismatches = alignment.counts()[2]
-            if alignment.score > best_score and (gaps + mismatches) < 10:
+            # Get number of gaps and mismatches to avoid 
+            counts = alignment.counts()
+            gaps = counts.gaps
+            mismatches = counts.mismatches
+            if alignment.score > best_score and (gaps + mismatches) < 6:
                 best_coords = get_correct_intervals(alignment)
                 best_score = alignment.score
         coordinates.append(best_coords)
     return coordinates
 
 def get_seqs_alignment(seq1, seq2):
-    """Gets the alignment object for two long sequences."""
+    """Gets the alignment object for two long sequences.
+    
+    Args:
+        seq1 (str): reference sequence
+        seq2 (str): subject sequence 
+    
+    Returns:
+        Alignment object
+    """
+    # Use long aligner
     alignments = long_aligner.align(seq1, seq2)
+    # Parameters to determine the best alignment
     best_score = 0
     best_alignment = None
     for i, alignment in enumerate(alignments):
@@ -87,17 +102,14 @@ def get_correct_intervals(alignment):
     # Get the aligned sequences as strings.
     top_seq = str(alignment[0])
     bottom_seq = str(alignment[1])
-
     intervals = []  # list to hold (start, end) intervals of correct positions.
     current_start = None  # start coordinate for the current interval
     ref_index = alignment.coordinates[0][0]  # coordinate in the ungapped reference sequence
-
     # Iterate over alignment columns.
     for top_char, bottom_char in zip(top_seq, bottom_seq):
         # If the top sequence has a gap, it does not correspond to a real base.
         if top_char == '-':
             continue
-        
         # Check if the base is correct (a match between top and bottom).
         if top_char == bottom_char:
             if current_start is None:
@@ -108,12 +120,9 @@ def get_correct_intervals(alignment):
             if current_start is not None:
                 intervals.append((current_start, ref_index - 1))
                 current_start = None
-
         # Increment the reference coordinate only when top_char is not a gap.
         ref_index += 1
-
     # Close any open interval at the end.
     if current_start is not None:
         intervals.append((current_start, ref_index - 1))
-    
     return intervals

@@ -18,12 +18,13 @@ def get_NCBI_Sequences(barcode, taxid, email=EMAIL, api_key=NCBI_API_KEY):
 
     Args:
         barcode (str): The name of the barcode.
-        organism (str): The taxonomical ID of the organism.
+        taxis (str): The taxonomical ID of the organism.
         email (str): Email address to use with NCBI Entrez.
         api_key (str): API key to use with NCBI Entrez (optional).
 
     Returns:
-        A list of tuples. Each tuple contains the fasta header and sequence of a barcode sequence.
+        A list of tuples. Each tuple contains the fasta header and sequence of a barcode found in 
+        NCBI database.
     """
     sequences = []
     # Entrez parameters
@@ -125,7 +126,20 @@ def get_taxa_id(organism_name, email=EMAIL, api_key=NCBI_API_KEY):
         return None
  
 
-def blast(sequence, barcode_query, rank, megablast_use, email=EMAIL, api_key=NCBI_API_KEY):
+def blast(sequence, barcode_query, rank, megablast_use):
+    """ Returns BLAST results as a list of dictionaries for the alignment of the target barcode sequence 
+    with species in the specified taxonomy rank.
+
+    Args:
+        sequence (str): Nucleotide sequence to blast
+        barcode_query (str): name of the barcode to filter fasta documents in organisms blasted
+        rank (str): biological name of the taxonomical rank of the organism that contains the desired species
+            to blast
+        megablast_use (bool): True if the users want to use Megablast or False otherwise
+
+    Returns:
+        List with dictionaries with information for every hit that BLAST reports
+    """
     # Define element to return
     data = []
     # Define query
@@ -137,7 +151,7 @@ def blast(sequence, barcode_query, rank, megablast_use, email=EMAIL, api_key=NCB
             database        = "nt",
             sequence        = sequence,
             entrez_query    = query,
-            hitlist_size    = 20000,
+            hitlist_size    = 20000,            # Increase hitlist to avoid falling short
             megablast       = megablast_use,
         )
         # Parse blast results
@@ -159,7 +173,7 @@ def blast(sequence, barcode_query, rank, megablast_use, email=EMAIL, api_key=NCB
                     diffs = len(sequence) - identities + gaps
                     score = best_hsp.score
                     sbjct_seq = best_hsp.sbjct
-                    # Get percentage of identity 
+                    # Get percentage of identity with the score
                     identity_pct = 100*score/len(sequence)
                     # Create datapoint to save
                     datapoint = {
@@ -182,13 +196,20 @@ def blast(sequence, barcode_query, rank, megablast_use, email=EMAIL, api_key=NCB
 
 
 def filter_data(data):
-    """Filters the data to get only on entry per scientific name"""
+    """
+    Filters the data obtained from BLAST to get only one entry per scientific name. 
+    Results are filtered by identity percentage, the data corresponding to the organism kept will
+    be the one with the higher identity percentage as it is the worst-case scenario.
+    """
+    # Dictionary to store unique species names
     unique = {}
     for element in data:
         name = element["Scientific name"]
-        identities = element["Identities"]
+        identity_pct = element["Identity percentage"]
+        # Check if the name has already been stored
         if name in unique.keys():
-            if identities > unique[name]["Identities"]:
+            # Store the one with the greatest identity percentage
+            if identity_pct > unique[name]["Identity percentage"]:
                 unique[name] = element
         else:
             unique[name] = element

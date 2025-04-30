@@ -1,4 +1,7 @@
-"""Contains the main creation of the main window and the controller. It has the main function to run the app"""
+"""
+Contains the main creation of the main window and the controller. It has the main function to run the app.
+"""
+
 import sys
 from PyQt5.QtWidgets import QApplication
 from PyQt5.QtGui import QIcon
@@ -24,4 +27,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-    

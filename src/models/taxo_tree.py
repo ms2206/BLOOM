@@ -213,4 +213,3 @@ class InteractiveText(QGraphicsSimpleTextItem):
         font.setBold(False)
         self.setFont(font)
         super(InteractiveText, self).hoverLeaveEvent(event)
-

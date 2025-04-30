@@ -44,5 +44,5 @@ data_types:
   - "Identity percentage"
 animation_duration: 1500
 
- 
-
+# Github repo url
+github_link: "https://github.com/ms2206/BLOOM"

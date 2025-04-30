@@ -255,5 +255,3 @@ QRadioButton::indicator:checked {
 QRadioButton::indicator:hover {
     border: 2px solid #BE5985; /* hot pink */
 }
-
-

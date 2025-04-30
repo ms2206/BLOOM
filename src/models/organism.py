@@ -1,5 +1,5 @@
-""" Contains Organism class.
-
+""" 
+Contains Organism class.
 """
 
 import services.bloom_functions as bf
@@ -29,7 +29,4 @@ class Organism:
 
     def _set_taxonomy(self):
         """Sets the taxonomy given the taxonomical ID."""
-        return bf.get_taxonomy(self.taxid)
-                
-                    
-        
+        return bf.get_taxonomy(self.taxid)      
