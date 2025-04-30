@@ -65,7 +65,7 @@ def get_NCBI_Sequences(barcode, taxid, email=EMAIL, api_key=NCBI_API_KEY):
                             sequences.append(datapoint)
     except Exception as e:
         # Raise exception
-        return (None, e)
+        return (None, "No results where found for the selected parameters.")
     else:
         # Return results
         return sequences
