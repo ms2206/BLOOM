@@ -69,13 +69,6 @@ QLabel#regularLabel {
 
 /* Input widgets */
 
-QLabel#resultsLabel {
-    font-size: 24px;
-    font-family: "Bahnschrift Semibold";
-    font-weight: bold;
-    color: #000000
-}
-
 QLineEdit{
     background-color: #FFFFFF;
     border: 2px solid #EC7FA9;
@@ -254,4 +247,18 @@ QRadioButton::indicator:checked {
 
 QRadioButton::indicator:hover {
     border: 2px solid #BE5985; /* hot pink */
+}
+
+QLabel#resultsLabel {
+    font-size: 24px;
+    font-family: "Bahnschrift Semibold";
+    font-weight: bold;
+    color: #000000
+}
+
+QLabel#resultsTitleLabel {
+    font-size: 28px;
+    font-family: "Bahnschrift Semibold";
+    font-weight: bold;
+    color: #000000
 }

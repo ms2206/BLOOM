@@ -154,9 +154,9 @@ class MainController:
         self.main_window.add_new_barcode_tab(tab_name, barcodes_data)
     
     ## Selecting barcodes
-    def add_sequence_to_blast(self, sequence, barcode_type):
+    def add_sequence_to_blast(self, sequence, barcode_type, acc_number):
         """Adds a new sequence to blast to the list given its barcode type"""
-        self.seqs_to_blast[barcode_type] = sequence
+        self.seqs_to_blast[barcode_type] = (sequence, acc_number)
     
     def remove_sequence_to_blast(self, type):
         if type in self.seqs_to_blast.keys():
@@ -169,7 +169,7 @@ class MainController:
             barcode_type = list(self.seqs_to_blast.keys())[0]
             barcode_query = QUERIES_DICT[barcode_type]
             # Get sequence
-            self.sequence = self.seqs_to_blast[barcode_type]
+            self.sequence = self.seqs_to_blast[barcode_type][0]
             # Check if user wants to use megablast
             megablast_use = True if blast_mode == "Megablast" else False
             # Get taxonomy rank name
@@ -179,7 +179,7 @@ class MainController:
                     rank_name = level['ScientificName']
                     break
             # Write in logbook
-            self.write_in_logbook(f'Starting BLAST search for a {barcode_type} barcode in the {rank} of {self.studied_organism.name}.')
+            self.write_in_logbook(f'Starting {blast_mode} search for a {barcode_type} barcode in the {rank} of {self.studied_organism.name}.')
             # Run blast
             blast_results = bf.blast(self.sequence, barcode_query, rank_name, megablast_use)
             if not blast_results[0]:
@@ -192,7 +192,11 @@ class MainController:
             # Analyse results
             self.results_pcts_stats = self._analyse_results_by_pcts()
             self.results_diffs_stats = self._analyse_results_by_diffs()
-            self.main_window.show_results(self.results_diffs_stats)
+            # Get title for results display
+            acc_number = self.seqs_to_blast[barcode_type][1]
+            title = f'{blast_mode} search for the {rank} of {self.studied_organism.name} [{barcode_type} gene: {acc_number}]'
+            # Display results
+            self.main_window.show_results(self.results_diffs_stats, title)
             return None
         else:
             self.error_pop_up("Select ONE barcode to BLAST")

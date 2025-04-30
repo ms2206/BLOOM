@@ -953,9 +953,15 @@ class ResultsTab(QScrollArea):
             if widget is not None:
                 widget.setParent(None)
     
-    def add_stats(self, results, data_type):
+    def add_stats(self, results, data_type, title):
         # Clean layout
         self.clear_layout()
+        # Add title
+        if title:
+            self.title_label = QLabel(title)
+            self.title_label.setObjectName("resultsTitleLabel")
+            self.title_label.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
+            self.title_label.setAlignment(Qt.AlignHCenter)
         # Create widgets with charts
         labels = results[0]
         all_hits = results[1]
@@ -969,6 +975,7 @@ class ResultsTab(QScrollArea):
                                                  title="UNIQUE"+"\n"+"SPECIES", 
                                                  data_type=data_type)
         # Add widgets
+        self.layout.addWidget(self.title_label)
         self.layout.addWidget(self.all_hits_chart)
         self.layout.addWidget(self.species_chart)
         # Set layout
@@ -1041,7 +1048,7 @@ class BarcodesTab(QScrollArea):
         for barcode_card in self.barcode_card_list:
             if barcode_card.id == barcode_id:
                 self.checked_card = barcode_card
-                self.controller.add_sequence_to_blast(barcode_card.sequence, self.tab_name)
+                self.controller.add_sequence_to_blast(barcode_card.sequence, self.tab_name, barcode_id)
         self.controller.write_in_logbook("The barcode " + barcode_id + " has been selected.")
 
     def uncheck_barcode_cards(self, barcode_id):
@@ -1093,7 +1100,7 @@ class OutputModule(QTabWidget):
         self.addTab(self.new_barcode_tab, barcode_name)
         self.setCurrentIndex(self.count() - 1) 
     
-    def show_results(self, results):
+    def show_results(self, results, title):
         # Check type of results
         labels = results[0]
         data_type = "percentages" if '%' in labels[0] else 'differences'
@@ -1102,7 +1109,7 @@ class OutputModule(QTabWidget):
         # Change tab to results tab
         self.setCurrentIndex(0) 
         # Add results in results tab
-        self.results_tab.add_stats(results, data_type)     
+        self.results_tab.add_stats(results, data_type, title)     
     
     def on_tab_changed(self, index):
         if index == 0:

@@ -96,9 +96,9 @@ class MainWindow(QMainWindow):
             self.input_module.show()
         self.header.toggle_button_text()
     
-    def show_results(self, results):
+    def show_results(self, results, title=None):
         """Shows results obtained by BLAST in the results tab."""
-        self.output_module.show_results(results)
+        self.output_module.show_results(results, title)
     
     def show_error(self, message):
         """Creates a pop up window with the error message."""
