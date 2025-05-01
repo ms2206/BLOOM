@@ -153,6 +153,9 @@ def blast(sequence, barcode_query, rank, megablast_use):
             entrez_query    = query,
             hitlist_size    = 20000,            # Increase hitlist to avoid falling short
             megablast       = megablast_use,
+            gapcosts        = "1 2",  # gap open = 5, gap extend = 2
+            nucl_penalty    = "-1",  # match=+2, mismatch=-3
+            nucl_reward     = "1"
         )
         # Parse blast results
         blast_records = NCBIXML.parse(result_handle)

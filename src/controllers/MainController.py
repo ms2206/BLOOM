@@ -178,10 +178,13 @@ class MainController:
                 if level['Rank'].lower() == rank.lower():
                     rank_name = level['ScientificName']
                     break
+            print(rank_name)
             # Write in logbook
             self.write_in_logbook(f'Starting {blast_mode} search for a {barcode_type} barcode in the {rank} of {self.studied_organism.name}.')
             # Run blast
             blast_results = bf.blast(self.sequence, barcode_query, rank_name, megablast_use)
+            if not blast_results:
+                self.error_pop_up(f'BLAST error: the hit-list is empty')
             if not blast_results[0]:
                 self.error_pop_up(f'BLAST error: {blast_results[1]}')
                 return 1
