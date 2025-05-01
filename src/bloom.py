@@ -1,5 +1,6 @@
 """
 Contains the main creation of the main window and the controller. It has the main function to run the app.
+Run this file to run the app.
 """
 
 import sys

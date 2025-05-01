@@ -29,7 +29,7 @@ def get_NCBI_Sequences(barcode, taxid, email=EMAIL, api_key=NCBI_API_KEY):
     sequences = []
     # Entrez parameters
     Entrez.email = email
-    query = f'{barcode}[gene] AND txid{taxid}[organism]'
+    query = f'({barcode}[gene]) AND txid{taxid}[organism]'
     # Perform search
     try:
         handle = Entrez.esearch(db = 'nucleotide',
@@ -143,7 +143,7 @@ def blast(sequence, barcode_query, rank, megablast_use):
     # Define element to return
     data = []
     # Define query
-    query = f'({barcode_query}[gene] OR (complete genome[all])) AND {rank}[Organism]'
+    query = f'(({barcode_query}[gene]) OR (complete genome[all])) AND ({rank}[Organism])'
     try:
         # Blast
         result_handle = NCBIWWW.qblast(

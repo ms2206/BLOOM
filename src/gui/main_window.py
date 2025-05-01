@@ -1,10 +1,13 @@
 """
 Contains the main window of the app.
 """
+
+
 from PyQt5.QtWidgets import QMainWindow, QVBoxLayout, QWidget, QSplitter, QMessageBox
 from PyQt5.QtCore import Qt
 from gui.widgets import CustomMenuBar, InputModule, OutputModule, LogBook, Header, AlignmentPopup
 import os, signal
+
 
 class MainWindow(QMainWindow):
     """It is the main window of the app where all the widgets are contained.
@@ -23,8 +26,8 @@ class MainWindow(QMainWindow):
         """ Initialises an instance of the class.
 
         Args:
-            controller(MainController)
-            app (QApplication)
+            controller(MainController): controller used to do operations in the back
+            app (QApplication): app where this main window belongs too
         """
         super().__init__()
         # Add controller
@@ -41,7 +44,7 @@ class MainWindow(QMainWindow):
         self.menu_bar = CustomMenuBar(self, self.controller)
         self.setMenuBar(self.menu_bar)   
         # Add header
-        self.header = Header(self, self.controller)
+        self.header = Header(self)
         # Add Input Module
         self.input_module = InputModule(self.controller)
         # Add logbook

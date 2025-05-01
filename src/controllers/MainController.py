@@ -22,13 +22,25 @@ QUERIES_DICT = config.get_barcodes_queries()
 
 
 class MainController:
-    """Class that manages the actions in the GUI with the functions and classes in the back-end.
+    """Class that manages the actions in the GUI with the functions and classes in the back.
 
-    Attributes (widgets):
-        studied_organism(Organism): organism to study
-        barcodes(dict): barcodes being studied grouped by type to study
-        main_window(MainWindow): main window of the app
-        seqs_to_blast(dict): sequences grouped by barcode type to blast
+    This class is the most important of the entire app. It communicates the GUI with the models and
+    services that operate the calculations and APIs. Only one instance of the class is created when
+    declaring the app so that the data stored in its attributes can be accessed by other widgets. 
+
+    Attributes:
+        main_window (MainWindow): main window which communicates with this controller
+        studied_organism (Organism): contains the biological information of the organism to study  
+        barcodes (dict): barcodes obtained from an NCBI search grouped by their types. Keys: barcode types, 
+            values: list with instances of the Barcode class                   
+        seqs_to_blast (dict): sequences to blast grouped by type of barcode so that there is only one sequence
+            per barcode type. Keys: barcode type, values: tuple with the sequence and the accession number. This
+            implementation facilitates multiple barcode blast but it is not implemented in the current version.
+        blast_results (list): dat obtained by BLAST
+        blast_results_unique (list): data obtained by BLAST filtered to get only one datapoint per species
+        results_diffs_stats (list): list of frequencies of hits/species with a specific number of differences 
+        results_pcts_stats (list): list of frequencies of hits/species within a specific range of identity percentage
+        sequence (str): nucleotide sequence selected to BLAST
     """
     def __init__(self):
         """Initialises and instance of the class."""
@@ -44,7 +56,11 @@ class MainController:
 
     # PRIVATE METHODS
     def _filter_barcodes(self, barcode_list, barcode_type):
-        """Filters the list of barcodes so that all sequences are unique."""
+        """Filters the list of barcodes so that all sequences are unique.
+        
+        Args: 
+            barcode_list (list): list of barcodes to filter.
+            barcode_type (str): type of barcode to organise them."""
         # Dictionary to store the barcodes with sequnce as key
         unique_barcodes = {}
         filtered_barcodes = {}
@@ -61,6 +77,10 @@ class MainController:
         return filtered_barcodes
     
     def _analyse_results_by_pcts(self):
+        """
+        Analyses results to return a list of numbers with the frequency of hits within a specific
+        range of identity percentage.
+        """
         # Create array of stats for identity percentage
         pcts_all_hits = [0]*(100 - PCT_THRESHOLD + 2)
         pcts_unique = [0]*(100 - PCT_THRESHOLD + 2)
@@ -93,6 +113,10 @@ class MainController:
         return (labels, pcts_all_hits, pcts_unique)
         
     def _analyse_results_by_diffs(self):
+        """
+        Analyses results to return a list of numbers with the frequency of hits with a specific
+        number of differences.
+        """
         # Calculate the maximum number of differences given threshold percentage
         max_diffs = int(math.ceil(len(self.sequence)*(100 - PCT_THRESHOLD)/100))
         # Create array to count the number of hits or species with a specific number of hits
@@ -115,7 +139,13 @@ class MainController:
     # PUBLIC METHODS
     ## Searching barcodes 
     def search_barcodes(self, organism, barcode_type, primers):
-        """Goes throught the process of creating a new organism and the barcode sequences requested by the user."""
+        """Goes throught the process of creating a new organism and the barcode sequences requested by the user.
+        
+        Args:
+            organism (str): name of the organism to study
+            barcode_type (str): type of barcode to search
+            primers (tuple): tuple with the forward and reverse primers of the barcode
+        """
         try:
             self.studied_organism = Organism(organism)
         except Exception as e:
@@ -142,7 +172,7 @@ class MainController:
                 self.barcodes = self._filter_barcodes(barcode_list, barcode_type)
 
     def add_new_barcode_tab(self, tab_name):
-        """Gets the information to create a new tab with barcodes"""
+        """Gets the information to create a new tab with barcodes given the barcode type as tab name."""
         # Get the list of barcodes given the barcode name which is the tab name
         barcodes_to_add = self.barcodes[tab_name]
         barcodes_data = []
@@ -155,15 +185,30 @@ class MainController:
     
     ## Selecting barcodes
     def add_sequence_to_blast(self, sequence, barcode_type, acc_number):
-        """Adds a new sequence to blast to the list given its barcode type"""
+        """Adds a new sequence to BLAST to the list given its barcode type.
+        
+        Args:
+            sequence (str): nucleotide sequence to BLAST
+            barcode_type (str): type of barcode to organise the sequence to BLAST so that
+                there is only one sequence ber type
+            acc_number (str): accession number of the sequence selected to keep track of 
+                which one was selected"""
         self.seqs_to_blast[barcode_type] = (sequence, acc_number)
     
     def remove_sequence_to_blast(self, type):
+        """Remove the sequence from the unchecked barcode from the sequences to BLAST given the barcode type."""
         if type in self.seqs_to_blast.keys():
             del self.seqs_to_blast[type]
     
     ## Getting results from BLAST
     def start_blast(self, blast_mode, rank):
+        """BLASTs the sequence selected by the user with the parameters inputted
+        
+        Args:
+            blast_mode (str): option to use Megablast or discontiguous blast
+            rank (str): taxonomy rank to narrow down BLAST search
+        """
+        # check if there is only one sequence selected
         if len(self.seqs_to_blast.keys()) == 1:
             # Get barcode query from tab name and list of queries
             barcode_type = list(self.seqs_to_blast.keys())[0]
@@ -185,6 +230,7 @@ class MainController:
             blast_results = bf.blast(self.sequence, barcode_query, rank_name, megablast_use)
             if not blast_results:
                 self.error_pop_up(f'BLAST error: the hit-list is empty')
+                return 1
             if not blast_results[0]:
                 self.error_pop_up(f'BLAST error: {blast_results[1]}')
                 return 1
@@ -206,6 +252,15 @@ class MainController:
             return None
 
     def update_results(self, data_type, show_dissimilar):
+        """Updates the result visualisatcion based on the selected parameters.
+        
+        Args:
+            data_type (str): type of data to display (identity percentages or number of
+                differences)
+            show_dissimilar (bool): if true, dissimilar results are shown, otherwise they 
+                are not taken into account
+        """
+        # Check if there are available BLAST results
         if not self.results_diffs_stats or not self.results_pcts_stats:
             self.error_pop_up("Missing BLAST results")
             return
@@ -229,11 +284,15 @@ class MainController:
 
     ## Using taxonomy tree
     def create_tree(self):
+        """Creates and displays a taxonomy tree."""
+        # Check if there are results available
         if self.blast_results_unique:
             try:
+                # Create tree
                 tree = TaxoTree(species_info=self.blast_results_unique, 
                                 target=self.studied_organism.name,
                                 controller=self)
+                # Display tree
                 tree.show_tree()
                 self.write_in_logbook(f'Taxonomy tree created for {self.studied_organism.name}')
             except Exception as e:
@@ -242,20 +301,32 @@ class MainController:
             self.error_pop_up("Missing BLAST results")
         
     def show_alignment_from_tree(self, name):
+        """
+        Gets the alignment from the name of the selected organism on the tree and the sequence blasted.
+        Then calls the main window to create a pop-up window with the alignment.
+        """
+        # Initialise alignment text to be displayed
         alignment_text = ""
+        # Get sequence and name from the studied organism
         target = self.studied_organism.name
         target_seq = self.sequence
+        # Get all sequences from the name selected in the tree
         for element in self.blast_results:
             if element["Scientific name"].lower() == name.lower():
                 sequence = element["Subject sequence"]
+                # Sequences in blast results contain gaps as "-" and need to be eliminated
                 sequence = sequence.replace("-", "")
+                # Add accession number differentiate alignments 
                 acc_num = element["Accession Number"]
                 alignment = self.align_seqs(target_seq, sequence)
+                # Add alignment text to text to display
                 alignment_text += acc_num + "\n" + str(alignment) + "\n\n\n"
         self.main_window.create_popup_from_tree(alignment_text, target, name)
 
     ## Creating CSV
     def write_csv(self, file_path):
+        """Creates and writes a csv file given a path to the file."""
+        # Get column names from keys in dictionary with results
         column_names = self.blast_results[0].keys()
         try:
             # Write to the file
@@ -263,20 +334,24 @@ class MainController:
                 writer = csv.DictWriter(file, fieldnames=column_names)
                 writer.writeheader()
                 writer.writerows(self.blast_results)
+            # Write message in the logbook
             self.write_in_logbook(f"Data successfully saved to {file_path}")
         except Exception as e:
+            # Error message
             self.error_pop_up(f"Error writing csv file: {e}") 
     
     ## Messaging
     def error_pop_up(self, message):
+        """Calls the main window to display a pop-up error message."""
         self.main_window.show_error(message)
     
     def write_in_logbook(self, text):
-        """Calls the main window to write in the logbook"""
+        """Calls the main window to write a text in the logbook"""
         self.main_window.write_in_logbook(text)
 
     ## Others
     def clear(self):
+        """Resets own data and calls main window to clear all information."""
         # Clear own data
         self.studied_organism = None  # Track the active organism
         self.barcodes = {}
@@ -290,7 +365,12 @@ class MainController:
         self.main_window.clear()
     
     def align_seqs(self, seq1, seq2):
-        """Returns the alignment of two sequences"""
+        """Returns the alignment of two sequences.
+        
+        Args:
+            seq1 (str): target or reference sequence.
+            seq2 (str): aligned or subejct sequence
+        """
         return get_seqs_alignment(seq1, seq2)    
 
     def load_species_list(self):

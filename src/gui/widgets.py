@@ -35,13 +35,19 @@ class PieChartWidget(QWidget):
     aesthetic purposes.
 
     Arguments:
-        values (list): list of values to display. Each sector in the chart has a value
+        values (list): list of numerical values to display. Each sector in the chart has a value
         colours (list): list of colours for each value. Each sector in the chart has a colour
         animation_progress (double): used to track how much has been animated
         start_angle_offset (int): starting position of the animation.
         total_angle (int): total angle that is goint go be covered by the chart
     """
     def __init__(self, values, colours):
+        """Creates an instance of the class.
+
+        Args:
+            values (list): list of numerical values to display. Each sector in the chart has a value
+            colours (list): list of colours for each value. Each sector in the chart has a colour
+        """
         super().__init__()
         # Set data and colours
         self.values = values
@@ -117,13 +123,21 @@ class BarChartWidget(QWidget):
     tab the chart is drawn again for aesthetic purposes.
 
     Arguments:
-        labels (list): list of labels for the x-acxis.
-        values (list): list of values to display. Each sector in the chart has a value.
+        labels (list): list of labels for the x-axis.
+        values (list): list of numerical values to display. Each sector in the chart has a value.
         colours (list): list of colours for each value. Each sector in the chart has a colour.
         title (str): title for the x-axis
         animation_progress (double): used to track how much has been animated.
     """
     def __init__(self, values, labels, colours, data_type):
+        """Creates an instance of the class.
+
+        Args:
+            values (list): list of numerical values to display
+            labels (list): list of labels for the X-Axis in the bar chart
+            colours (list): list of colours for each value. Each sector in the chart has a colour.
+            data_type (str): type of data to be represented (percentages of number of differences)
+        """
         super().__init__()
         # Define data numbers, colours
         self.labels = labels
@@ -180,14 +194,33 @@ class BarChartWidget(QWidget):
 class CombinedChartWindow(QWidget):
     """Widget that contains one line of results to be displayed in the results tab.
 
-    This widget containsa a title, a single pie chart widget and a single bar chart widget.
+    This widget contains a title that indicates if the results are for all hits or just unique
+    species, the donut plot and the bar plot. The parameters needed to set up the animation 
+    process are defined in this class.
 
     Arguments: 
-        data (list): values to be displayed
-        labels (list): list of labels for the x-axis in the bar chart
-        title (str): title of the section
+        data (list): numerical data to be displayed in the graphs
+        labels (list): list of labels for the X-Axis in the barc chart
+        title (str): title of the results
+        timer (QTimer): timer object used for the animations
+        elapsed (double): elapsed time that has passed since the animation started
+        animation_interval (int): time interval used to calculate the time that has to
+            pass for the animation to progress
+    
+    Widgets:
+        title_label (QLabel): label with the title of the results
+        pie_chart (PieChartWidget): donut chart
+        bar_chart (BarChartWidget): bar plot
     """
     def __init__(self, data, labels, title, data_type):
+        """Creates an instance of the class.
+
+        Args:
+            data (list): numerical data to be displayed in the graphs
+            labels (list): list of labels for the X-Axis in the bar chart
+            title (str): title of the results
+            data_type (str): type of data to be represented (percentages of number of differences)
+        """
         super().__init__()
         self.data = data
         self.labels = labels
@@ -203,23 +236,23 @@ class CombinedChartWindow(QWidget):
         # Bar chart
         self.bar_chart = BarChartWidget(values=self.data, labels=self.labels, colours=palette, data_type=data_type)
         # Splitter
-        self.main_splitter = QSplitter(Qt.Horizontal)
-        self.graphs_splitter = QSplitter(Qt.Horizontal)
+        main_splitter = QSplitter(Qt.Horizontal)
+        graphs_splitter = QSplitter(Qt.Horizontal)
         """Splitters layout"""
         # Splitter for graphs
-        self.graphs_splitter.addWidget(self.pie_chart)
-        self.graphs_splitter.addWidget(self.bar_chart)
-        self.graphs_splitter.setSizes([500, 500])
-        self.graphs_splitter.setStretchFactor(1, 1)
+        graphs_splitter.addWidget(self.pie_chart)
+        graphs_splitter.addWidget(self.bar_chart)
+        graphs_splitter.setSizes([500, 500])
+        graphs_splitter.setStretchFactor(1, 1)
         # Main splitter
-        self.main_splitter.addWidget(self.title_label)
-        self.main_splitter.addWidget(self.graphs_splitter)
-        self.main_splitter.setSizes([100, 900])
-        self.main_splitter.setStretchFactor(1, 1)
+        main_splitter.addWidget(self.title_label)
+        main_splitter.addWidget(graphs_splitter)
+        main_splitter.setSizes([100, 900])
+        main_splitter.setStretchFactor(1, 1)
         """Widgets' layout"""
         # Layout
         layout = QHBoxLayout()
-        layout.addWidget(self.main_splitter)
+        layout.addWidget(main_splitter)
         self.setLayout(layout)
         """Animation parameters-"""
         self.timer = QTimer(self)
@@ -274,35 +307,36 @@ class CombinedChartWindow(QWidget):
 class CustomMenuBar(QMenuBar):
     """Menu bar at the top of the app
 
-    This class contains the menus and submenus at the top of the app 
+    Attributes:
+        controller (MainController): controller to perform actions when options are pressed
 
-    Attributes (widgets):
-        file_menu: contains the actions to close the app and generate report (future)
-        settings_menu: contains the actions to change default parameters (future)
-        help_menu: contains the action to provide the user with help (future)
+    Wdgets:
+        file_menu (QMenu): contains the actions to close the app and generate report 
+        help_menu (QMenu): contains the action to provide the user with help 
     """
     def __init__(self, parent, controller):
         super().__init__(parent)
-        """ Initialises the instance 
+        """Creates an instance of the class. 
 
         Args:
             parent (QMainWindow): main window of the app where the menu belongs
+            controller (MainController): controller to perform actions when options are pressed
         """
         self.controller = controller
         # File Menu
         self.file_menu = self.addMenu("File")
-        exit_action = QAction("Exit", self)         # Close the app
+        exit_action = QAction("Exit", self)             # Close the app
         exit_action.triggered.connect(parent.close)
         self.file_menu.addAction(exit_action)
         csv_action = QAction("Create .csv file", self)
         csv_action.triggered.connect(self.write_csv)
         self.file_menu.addAction(csv_action)
-        clear_action = QAction("Clear workspace", self)
+        clear_action = QAction("Clear workspace", self) # Clear the workspace
         clear_action.triggered.connect(self.clear_workspace)
         self.file_menu.addAction(clear_action)
         # Help Menu
         self.help_menu = self.addMenu("Help")
-        help_action = QAction('Help', self)
+        help_action = QAction('Help', self) # Show a pop up message with the link to the github
         help_action.triggered.connect(self.show_help_message)
         self.help_menu.addAction(help_action)
     
@@ -332,23 +366,26 @@ class CustomMenuBar(QMenuBar):
         self.controller.clear()
     
     def show_help_message(self):
+        """Shows a pop-up window with a message with the link to the github."""
         message = f'Check this link for more info:\n{GITHUB_LINK}'
         QMessageBox.information(self, "Help", message)
 
 
 class Header(QWidget):
-    """Header with the title of the app and button to close input module.
+    """Header with the title of the app and button to hide the input module.
 
-    Attributes (widgets):
-        toggle_button(QToolButton): hides and shows the input module
-        title(QLabel): full title of the app
+    Attributes:
+        main_window (QMainWindow): main window of the app where the title belongs
+
+    Widgets:
+        toggle_button (QToolButton): hides and shows the input module
+        title (QLabel): full title of the app
     """
-    def __init__(self, main_window, controller):
-        """ Initialises the instance 
+    def __init__(self, main_window):
+        """Creates an instance of the class.
 
         Args:
             main_window (QMainWindow): main window of the app where the title belongs
-            controller (MainController): controller to take the actions of the signals
         """
         super().__init__()
         # Add main window
@@ -366,14 +403,14 @@ class Header(QWidget):
         """ Widget's layout """
         # Define layout
         self.setFixedHeight(70)
-        self.layout = QHBoxLayout()
-        self.layout.setSpacing(10)
+        layout = QHBoxLayout()
+        layout.setSpacing(10)
         # Add toggle button
-        self.layout.addWidget(self.toggle_button)
+        layout.addWidget(self.toggle_button)
         # Add title
-        self.layout.addWidget(self.title)
+        layout.addWidget(self.title)
         # Set layout
-        self.setLayout(self.layout)
+        self.setLayout(layout)
 
     def toggle_input_module(self):
         """Commands the main window to hide or show the input module."""
@@ -390,12 +427,18 @@ class Header(QWidget):
 class SearchTab(QFrame):
     """Tab in the input module to define the barcode and organism to search.
 
-    This class inherits from QFrame. It incorporates the entry widgets to select which
-    organism which autocompletes with NCBi data and a barcode dropdown to select which
-    barcode to search for. There are also boxes to input the primers' sequences.
+    This incorporates all widgets to input the paramaeters for the barcode search. This includes 
+    the organism to study, the type of barcode and the sequence for the forward and reverse primers.
+    The tab has an autocompleter for the organism name so that the user can get help to write it. The 
+    barcode selection has a drop down to select from a list of barcode types. Finally the primer sequences
+    are autocompleted depending on the barcode selected but they can be later edited by the user.
 
-    Attributes (widgets):
-        species_input(QLineEdit): to enter the name of the organism
+    Attributes:
+        controller (MainController): controller to perform actions when buttons are pressed
+        full_species_list (list): list of all species in NCBI for the autocomplete
+    
+    Widgets:
+        species_input(QLineEdit): line widget to enter the name of the organism
         species_model(QStringListModel): list of organism names to choose from
         completer(QCompleter): completer for the organism name
         barcode_dropdown(QComboBox): to choose a barcode
@@ -404,10 +447,10 @@ class SearchTab(QFrame):
         search_button(QPushButton): button to search the selected parameters
     """
     def __init__(self, controller):
-        """ Initialises the instance 
+        """Creates an instance of the class.
 
         Args:
-            controller (MainController): controller to take the actions of the signals
+            controller (MainController): controller to perform actions when buttons are pressed
         """
         super().__init__()
         # Add controller
@@ -420,15 +463,15 @@ class SearchTab(QFrame):
         self.species_input.setPlaceholderText("Enter species name...")
         # Completer for the list of species
         self.species_model = QStringListModel()
-        self.completer = QCompleter(self.species_model, self)
-        self.completer.setCaseSensitivity(Qt.CaseInsensitive)
-        self.completer.setFilterMode(Qt.MatchContains)
-        self.completer.setCompletionMode(QCompleter.PopupCompletion)
+        completer = QCompleter(self.species_model, self)
+        completer.setCaseSensitivity(Qt.CaseInsensitive)
+        completer.setFilterMode(Qt.MatchContains)
+        completer.setCompletionMode(QCompleter.PopupCompletion)
         # Popup for the list of species
         popup = QListView()
-        self.completer.setPopup(popup)
+        completer.setPopup(popup)
         # Add completer and popup to species_input and add signal to suggest names
-        self.species_input.setCompleter(self.completer)
+        self.species_input.setCompleter(completer)
         self.species_input.textEdited.connect(self.update_species_completer)
         # Barcode selection dropdown
         self.barcode_dropdown = QComboBox()
@@ -452,42 +495,42 @@ class SearchTab(QFrame):
         self.search_button.setObjectName("regularButton")
         self.search_button.clicked.connect(self.search_button_action)
         # Labels
-        self.species_label = QLabel("Species")
-        self.species_label.setObjectName("regularLabel")
-        self.barcode_label = QLabel("Barcode")
-        self.barcode_label.setObjectName("regularLabel")
-        self.f_primer_label = QLabel("Forward primer")
-        self.f_primer_label.setObjectName("regularLabel")
-        self.r_primer_label = QLabel("Reverse primer")
-        self.r_primer_label.setObjectName("regularLabel")
+        species_label = QLabel("Species")
+        species_label.setObjectName("regularLabel")
+        barcode_label = QLabel("Barcode")
+        barcode_label.setObjectName("regularLabel")
+        f_primer_label = QLabel("Forward primer")
+        f_primer_label.setObjectName("regularLabel")
+        r_primer_label = QLabel("Reverse primer")
+        r_primer_label.setObjectName("regularLabel")
         """ Widgets' layout """
         # Define layour
-        self.layout = QVBoxLayout()
+        layout = QVBoxLayout()
         # Add species input
-        self.layout.addSpacing(30) 
-        self.layout.addWidget(self.species_label)
-        self.layout.addWidget(self.species_input)
-        self.layout.addSpacing(30) 
+        layout.addSpacing(30) 
+        layout.addWidget(species_label)
+        layout.addWidget(self.species_input)
+        layout.addSpacing(30) 
         # Add barcode input
-        self.layout.addWidget(self.barcode_label)
-        self.layout.addWidget(self.barcode_dropdown)
-        self.layout.addSpacing(30) 
+        layout.addWidget(barcode_label)
+        layout.addWidget(self.barcode_dropdown)
+        layout.addSpacing(30) 
         # Add primers input
-        self.layout.addWidget(self.f_primer_label)
-        self.layout.addWidget(self.f_primer_input)
-        self.layout.addSpacing(10) 
-        self.layout.addWidget(self.r_primer_label)
-        self.layout.addWidget(self.r_primer_input)
+        layout.addWidget(f_primer_label)
+        layout.addWidget(self.f_primer_input)
+        layout.addSpacing(10) 
+        layout.addWidget(r_primer_label)
+        layout.addWidget(self.r_primer_input)
         # Add space between button and other widgets
-        self.layout.addStretch()
+        layout.addStretch()
         # Add search button
-        self.layout.addWidget(self.search_button)
-        self.layout.addSpacing(30)     
+        layout.addWidget(self.search_button)
+        layout.addSpacing(30)     
         # Set layout
-        self.setLayout(self.layout)
+        self.setLayout(layout)
     
     def search_button_action(self):
-        """Gathers the data input by the user and commands the controller to search."""
+        """Gathers the data inputted by the user and commands the controller to search."""
         # Get organism and primers chosen by the user
         organism = self.species_input.text()
         index = self.barcode_dropdown.currentIndex()
@@ -498,7 +541,7 @@ class SearchTab(QFrame):
             message = "One or more fields are incomplete."
             self.controller.error_pop_up(message)
             return
-        # Get barcode type
+        # Get barcode type taking into account the blank option
         barcode_type = BARCODE_LIST[index-1]
         # Logbook
         self.controller.write_in_logbook(f'Fetching {barcode_type} sequences for {organism}.')
@@ -523,10 +566,10 @@ class SearchTab(QFrame):
         self.species_model.setStringList(filtered)
     
     def autocomplete_primers(self):
-        "Autocompletes the primers boxes with the primers of the selected barcode"
+        """Autocompletes the primers boxes with the primers of the selected barcode."""
         # Get index
         index = self.barcode_dropdown.currentIndex()
-        # If index is first option return (empty option)
+        # If index is first option return (blank option)
         if index == 0:
             return
         # Get barcode type from list to get primers
@@ -546,24 +589,30 @@ class SearchTab(QFrame):
 class BlastTab(QFrame):
     """Tab in the input module to define the parameters for BLAST and to generate the tree.
 
-    This class inherits from QFrame. It incorporates the entry widgets to select which
-    BLAST mode to use, the taxonomy rank to search and the percentage of identity from 
-    which two sequences are considered identical. It also incorporates a button to use
-    BLAST and a button to create a phylogenetic tree.
+    Thi tab incorporates the entry widgets to analyse results. It is divided intro three sections:
+        - BLAST section: to select parameters to analyse barcodes with the BLAST tool and the button to 
+        start it
+        - DATA DISPLAY section: to select how to show the results obtained for better interpretation
+        - TREE: button to create and show the taxonomy tree from the results obtained
 
-    Attributes (widgets):
-        controller (MainController): controller to take the actions of the signals
+    Attributes:
+        controller (MainController): controller to perform actions when buttons are pressed
+      
+    Widgets:
         blast_mode_dropdown(QComboBox): to select the blast mode
         rank_dropdown(QComboBox): to select the taxonomy rank to analyse
-        identity_slider(QSlider): to select the similarity threshold
+        data_type_dropdown (QComboBox): to select wchich of type of data to show the results
+        dissimilars_checkbox (QCheckBox): allows the user to display or not dissimilar species as they 
+            usually minimise other stats.
+        update_button (QPushButton): to redraw the stats with the selected parameters
         blast_button(QPushButton): to use BLAST with the parameters selected
-        tree_button(QPushButton): to generate the tree
+        tree_button(QPushButton): to generate and display the taxonomy tree
     """
     def __init__(self, controller):
-        """Creates an instance of the class.
+        """Initialises an instance of the class.
             
-            Args:
-                controller (MainController): controller to take the actions of the signals
+        Args:
+            controller (MainController): controller to perform actions when buttons are pressed
         """
         super().__init__()
         # Add controller
@@ -593,55 +642,53 @@ class BlastTab(QFrame):
         self.tree_button.setObjectName("regularButton")
         self.tree_button.clicked.connect(self.show_tree)
         # Labels
-        self.blast_mode_label = QLabel("BLAST mode")
-        self.blast_mode_label.setObjectName("regularLabel")
-        self.rank_label = QLabel("Taxonomy rank")
-        self.rank_label.setObjectName("regularLabel")
-        self.threshold_label = QLabel("Length threshold:")
-        self.threshold_label.setObjectName("regularLabel")
-        self.data_type_label = QLabel("Type of data")
-        self.data_type_label.setObjectName("regularLabel") 
+        blast_mode_label = QLabel("BLAST mode")
+        blast_mode_label.setObjectName("regularLabel")
+        rank_label = QLabel("Taxonomy rank")
+        rank_label.setObjectName("regularLabel")
+        data_type_label = QLabel("Type of data")
+        data_type_label.setObjectName("regularLabel") 
         """ Widget's layout """
         # Define layour
-        self.layout = QVBoxLayout()
+        layout = QVBoxLayout()
         # Add blast mode input
-        self.layout.addSpacing(30)
-        self.layout.addWidget(self.blast_mode_label)
-        self.layout.addWidget(self.blast_mode_dropdown)
-        self.layout.addSpacing(20) 
+        layout.addSpacing(30)
+        layout.addWidget(blast_mode_label)
+        layout.addWidget(self.blast_mode_dropdown)
+        layout.addSpacing(20) 
         # Add taxonomy rank input
-        self.layout.addWidget(self.rank_label)
-        self.layout.addWidget(self.rank_dropdown)
-        self.layout.addSpacing(20) 
+        layout.addWidget(rank_label)
+        layout.addWidget(self.rank_dropdown)
+        layout.addSpacing(20) 
         # Add blast button
-        self.layout.addWidget(self.blast_button)
-        self.layout.addSpacing(50)  
+        layout.addWidget(self.blast_button)
+        layout.addSpacing(50)  
         # Add a line to divide sections
         line1 = QFrame()
         line1.setFrameShape(QFrame.HLine)
         line1.setFrameShadow(QFrame.Sunken)
-        self.layout.addWidget(line1)
-        self.layout.addSpacing(50)  
+        layout.addWidget(line1)
+        layout.addSpacing(50)  
         # Add section to update results
-        self.layout.addWidget(self.data_type_label)
-        self.layout.addWidget(self.data_type_dropdown)
-        self.layout.addSpacing(20)
-        self.layout.addWidget(self.dissimilars_checkbox)
-        self.layout.addSpacing(20)
-        self.layout.addWidget(self.update_button)
-        self.layout.addSpacing(50)
+        layout.addWidget(data_type_label)
+        layout.addWidget(self.data_type_dropdown)
+        layout.addSpacing(20)
+        layout.addWidget(self.dissimilars_checkbox)
+        layout.addSpacing(20)
+        layout.addWidget(self.update_button)
+        layout.addSpacing(50)
         # Add a line to divide sections
         line2 = QFrame()
         line2.setFrameShape(QFrame.HLine)
         line2.setFrameShadow(QFrame.Sunken)
-        self.layout.addWidget(line2)
-        self.layout.addSpacing(40)  
+        layout.addWidget(line2)
+        layout.addSpacing(40)  
         # Add tree button
-        self.layout.addWidget(self.tree_button)
+        layout.addWidget(self.tree_button)
         # Add space after all widgets
-        self.layout.addStretch()   
+        layout.addStretch()   
         # Set layout
-        self.setLayout(self.layout)
+        self.setLayout(layout)
     
     def blast_button_action(self):
         """Calls the main controller to do a BLAST search."""
@@ -652,22 +699,25 @@ class BlastTab(QFrame):
             self.controller.write_in_logbook("Error when using BLAST")
     
     def update_button_action(self):
+        """Updates the results display with the new parameters selected."""
         data_type = DATA_TYPES[self.data_type_dropdown.currentIndex()]
         show_dissimilars = self.dissimilars_checkbox.isChecked()
         self.controller.update_results(data_type, show_dissimilars)
     
     def show_tree(self):
+        """Calls controller to create the taxonomy tree and display it"""
         self.controller.create_tree()
 
 
 class LogBook(QFrame):
     """Logbook to write all the events that have occurred in the app.
 
-    This class inherits from QFrame. It incorporates a text box where every time
-    and action is carried out, it is recorded with the time it happened.
+    This module contains a text box where every time and action is carried out, it is recorded 
+    with the time it happened. This aids the user to check what actions have been previously performed
+    to keep track of them and the time an action has taked to be carried out.
 
-    Attributes (widgets):
-        status_box(QTextEdit): box where the actions are written.
+    Widgets:
+        status_box (QTextEdit): box where the actions are written.
     """
     def __init__(self):
         """Creates an instance of the class."""
@@ -678,38 +728,49 @@ class LogBook(QFrame):
         self.status_box.setReadOnly(True)
         self.status_box.setObjectName("logBook")        # To apply custom style
         # Labels
-        self.log_label = QLabel("📓 LOGBOOK")
-        self.log_label.setObjectName("logBookTitle")    # To apply custom style
+        log_label = QLabel("📓 LOGBOOK")
+        log_label.setObjectName("logBookTitle")    # To apply custom style
         """Widgets' layout."""
-        # Define layour
-        self.layout = QVBoxLayout()
+        # Define layout
+        layout = QVBoxLayout()
         # Add status box
-        self.layout.addWidget(self.log_label)
-        self.layout.addWidget(self.status_box)
+        layout.addWidget(log_label)
+        layout.addWidget(self.status_box)
         # Set layout
-        self.setLayout(self.layout)
+        self.setLayout(layout)
     
     def log(self, message):
         """Writes in status_bow the action with the time when the action happened."""
+        # Get time when action happened
         timestamp = datetime.now().strftime("[%H:%M:%S]")
+        # Write message in the box
         self.status_box.append(f"{timestamp} {message}")
     
     def clear(self):
+        """Clears all lines written in the log book"""
         self.status_box.setText("")
 
 
 class InputModule(QTabWidget):
     """Tab widget with that incorporates a SearchTab and a BlastTab.
 
-    Attributes (widgets):
-        search_tab(SearchTab): see SearchTab class
-        blast_tab(BlastTab): see BlasTab class
+    This module includes all sections where the user can input data to perform searches, analyse 
+    barcodes and see results. The module is divided into two tabs: one to search barcodes and another
+    one to analyse barcodes and get visual results.
+
+    Attributes:
+        controller (MainController): controller to pass down to each tab
+    
+    Widgets:
+        search_tab(SearchTab): tab where the user can select the parameters to search for barcodes
+        blast_tab(BlastTab): tab where the user can select the parameters to analyse a selected barcode, 
+            display results and create a taxonomy tree.
     """
     def __init__(self, controller):
-        """ Initialises the instance 
+        """Creates an instance of the class.
 
         Args:
-            controller (MainController): controller to take the actions of the signals
+            controller (MainController): controller to pass down to each tab
         """
         super().__init__()
         # Add controller
@@ -724,19 +785,23 @@ class InputModule(QTabWidget):
         self.insertTab(1, self.blast_tab, "BLAST")
     
     def clear(self):
+        """Clean the parameters inputted by the user in the search tab"""
         self.search_tab.clear()
 
 
 class Sequence(QTextEdit):
     """Text widget to display the barcode sequence and highlight it.
 
-    Attributes (widgets):
+    This object is used inside barcode cards to display the sequence of the barcode and
+    to highlight the primers whenver the mouse is hovered over the nucleotide sequence.
+
+    Attributes:
         sequence(str): nucleotide string
-        primers_intervals(list of tuples): intervals marking the positions where the
-            nucleotide sequence aligns with the primers.
+        primers_intervals (list): intervals marking the positions where the nucleotide 
+            sequence aligns with the primers.
     """
     def __init__(self, sequence, primers_intervals):
-        """ Initialises an instance of the class.
+        """Creates an instance of the class.
 
         Args:
             sequence(str): nucleotide string
@@ -764,15 +829,18 @@ class Sequence(QTextEdit):
 
     def apply_highlight(self, intervals, colours):
         """Applies highlighter to a set of intervals with a given color."""
+        # Check all intervals
         for i, primer_list in enumerate(intervals):
+            # Prepare cursor to highlight text
             cursor = self.textCursor()
             fmt = QTextCharFormat()
             fmt.setBackground(colours[i])
-
+            # Highlight the selected interval
             for start, end in primer_list:
                 if start > end:
                     continue  # skip invalid intervals
                 length = end - start + 1
+                # Apply highlight
                 cursor.setPosition(start)
                 cursor.movePosition(QTextCursor.Right, QTextCursor.KeepAnchor, length)
                 cursor.mergeCharFormat(fmt)
@@ -781,11 +849,17 @@ class Sequence(QTextEdit):
 class AlignmentPopup(QWidget):
     """Pop up window to display the alignment of two sequences.
 
-    Attributes (widgets):
-        alignment_text(QTextEdit): text box to display the alignment
+    This pop-up window displays the alignment between two sequences. Each row contains
+    60 bases. The alignment symbols are the following: 
+        | : identical bases
+        - : gap
+        . : mismatch
+
+    Widgets:
+        alignment_text (QTextEdit): text box to display the alignment
     """
     def __init__(self, alignment, seq1_id, seq2_id):
-        """ Initialises an instance of the class.
+        """Creates an instance of the class.
 
         Args:
             alignment(Alignment): alignment object between two sequences
@@ -817,20 +891,23 @@ class BarcodeCard(QFrame):
     a fasta file uploaded to NCBI. It also shows the number of duplicates, i.e. 
     the number of fasta files uploaded to NCBI where the sequence is the same.
 
-    Attributes (widgets):
-        sequence(str): nucleotide sequence
-        select_radio(QRadioButton): radio button to select a sequence
-        sequence_text(Sequence): see Sequence class
-        id(str): fasta file id for the barcode. Serves as id for the card to differentiate
-            it from other cards in the same tab.
+    Attributes:
+        parent (BarcodesTab): BarcodesTab where the Barcode card belongs
+        sequence (str): nucleotide sequence to display
+        id (str): accesion number of the sequence to differentiate it from others and keep track
+            of the selected one
+        sequence_text (Sequence): Sequence object that is used to display highlighted primers
+
+    Widgets:
+        select_radio (QRadioButton): radio button to select barcode card
     """
     def __init__(self, parent, sequence, header, duplicates, primers_intervals):
-        """ Initialises an instance of the class.
+        """Creates an instance of the class.
 
         Args:
             parent(BarcodesTab): see BarcodesTab class
             sequence(str): nucleotide sequence
-            header(str): first header of the barcode sequence
+            header(str): first header in the list of headers for a specific barcode
             duplicates(int): number of duplicates
             primers_intervals(list of tuples): intervals marking the positions where the
                 nucleotide sequence aligns with the primers.
@@ -843,16 +920,16 @@ class BarcodeCard(QFrame):
         self.setObjectName("barcodeCard")   # To apply custom style
         """Add widgets."""
         # Fasta header label
-        self.header_label = QLabel(header)
-        self.header_label.setObjectName("barcodeLabel")
+        header_label = QLabel(header)
+        header_label.setObjectName("barcodeLabel")
         # Set the identifier of the card as the fasta file id
         self.id = header.split(" ")[0][1:]
         # Number of duplicates label
-        self.duplicates_label = QLabel(f'Duplicates: {duplicates}')
-        self.duplicates_label.setObjectName("barcodeLabel")
+        duplicates_label = QLabel(f'Duplicates: {duplicates}')
+        duplicates_label.setObjectName("barcodeLabel")
         # Length of sequence label
-        self.length_label = QLabel(f'Length: {len(self.sequence)}')
-        self.length_label.setObjectName("barcodeLabel")
+        length_label = QLabel(f'Length: {len(self.sequence)}')
+        length_label.setObjectName("barcodeLabel")
         # Radio button to select card
         self.select_radio = QRadioButton()
         self.select_radio.clicked.connect(self.check)
@@ -867,24 +944,24 @@ class BarcodeCard(QFrame):
         self.sequence_text.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         """Widget's layout."""
         # Define layout
-        self.layout = QVBoxLayout()
-        self.top_layout = QHBoxLayout()
+        layout = QVBoxLayout()
+        top_layout = QHBoxLayout()
         # Add fasta header to top_layout
-        self.top_layout.addWidget(self.header_label)
+        top_layout.addWidget(header_label)
         # Add stretch between fasta header and radio button
-        self.top_layout.addStretch()
+        top_layout.addStretch()
         # Add radio button
-        self.top_layout.addWidget(self.select_radio)
+        top_layout.addWidget(self.select_radio)
         # Add top layout to main layout
-        self.layout.addLayout(self.top_layout)
+        layout.addLayout(top_layout)
         # Add duplicates label
-        self.layout.addWidget(self.duplicates_label)
+        layout.addWidget(duplicates_label)
         # Add length label
-        self.layout.addWidget(self.length_label)
+        layout.addWidget(length_label)
         # Add sequence text
-        self.layout.addWidget(self.sequence_text) 
+        layout.addWidget(self.sequence_text) 
         # Set layout
-        self.setLayout(self.layout)
+        self.setLayout(layout)
     
     def check(self): 
         """Checks if the card is selected and acts accordingly."""
@@ -901,7 +978,7 @@ class BarcodeCard(QFrame):
         self.select_radio.setChecked(False)
     
     def mousePressEvent(self, event):
-        "Function to crete pop up window with the alignment."
+        "Function to crete a pop up window with the alignment."
         # Only works if a card is selected and the user right clicks a card
         if event.button() == Qt.RightButton and self.parent.checked_card:
             # The card can be the same as the selected one
@@ -918,15 +995,22 @@ class BarcodeCard(QFrame):
     
 
 class ResultsTab(QScrollArea):
-    """Tab to store the results obtained after the BLAST.
+    """Tab to display the results obtained after the BLAST.
 
-    Attributes (widgets):
-        
+    This tab contains the initialisation for the chart widgets that will display the results obtained
+    through the barcode analysis. Whenever stats are created or modified for the display the function
+    add_stats updates the widgets with the new information.
+
+    Widgets:
+        result_container (QWidget): Widget that will sever as a container to other widgets
+        layout (QVBoxLayout): layout to organise the widgets inside result_container
+        all_hits_chart (CombinedChartWindow): widget that displays the stats for all hits
+        species_chart (CombinedChartWindow): widget that displays the stats for only unique species
+
     """
-    def __init__(self, controller):
+    def __init__(self):
         """Creates an instance of the class."""
         super().__init__()
-        self.controller = controller
         # Allow to be resized
         self.setWidgetResizable(True)
         """Add widgets."""
@@ -942,11 +1026,13 @@ class ResultsTab(QScrollArea):
         self.setWidget(self.result_container)
     
     def restart_animation(self):
+        """Restarts the animation of the graphs."""
         if self.all_hits_chart and self.species_chart:
             self.all_hits_chart.restart_animation()
             self.species_chart.restart_animation()
     
     def clear_layout(self):
+        """Deletes everything contained in the layout."""
         while self.layout.count():
             item = self.layout.takeAt(0)
             widget = item.widget()
@@ -954,9 +1040,10 @@ class ResultsTab(QScrollArea):
                 widget.setParent(None)
     
     def add_stats(self, results, data_type, title):
+        """Creates the widgets to display the stats obtained along with the title."""
         # Clean layout
         self.clear_layout()
-        # Add title
+        # Add title if it is first time displaying results
         if title:
             self.title_label = QLabel(title)
             self.title_label.setObjectName("resultsTitleLabel")
@@ -986,18 +1073,19 @@ class ResultsTab(QScrollArea):
 class BarcodesTab(QScrollArea):
     """Tab to display the barcode cards.
 
-    Attributes (widgets):
-        barcode_card_list(list): list of BarcodeCard instances contained in the tab.
-        checked_card(str): id of the selected card
-        barcodes_data(list): list of lists containing the data for each barcode card. The
-            list includes: sequence, fasta header, number of duplicates and primer intervals.
-        name(str): name of the tab which corresponds to the type of barcode
+    Attributes:
+        checked_card (BarcodeCard): card selected by the user
+        controller (MainController): controller to pass the selected and unselected barcodes
+        barcodes_data (list): list containing the data for all barcode cards to be displayed in the tab
+        tab_name (str): title of the tab
+        barcode_card_list (list): list of barcodes contained in the tab    
     """
     def __init__(self, controller, tab_name, barcodes_data):
-        """ Initialises an instance of the class.
+        """Creates an instance of the class.
 
         Args:
-            controller(MainController): controller to call in functions.
+            controller(MainController): controller to pass the selected and unselected barcodes.
+            tab_name (str): name of the tab, which is the type of barcode selected
             barcodes_data(list): list of lists containing the data for each barcode card. The
                 list includes: sequence, fasta header, number of duplicates and primer intervals.
         """
@@ -1017,18 +1105,18 @@ class BarcodesTab(QScrollArea):
         # Add barcode data to barcode list
         self.populate_barcode_tab()
         # Allocate widgets in the tab
-        self.result_container = QWidget()
-        self.result_container.setObjectName("outputWidget")
-        self.result_layout = QVBoxLayout()
+        result_container = QWidget()
+        result_container.setObjectName("outputWidget")
+        result_layout = QVBoxLayout()
         for barcode_card in self.barcode_card_list:
             barcode_card.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
-            self.result_layout.addWidget(barcode_card)
+            result_layout.addWidget(barcode_card)
         # Add expanding spacer to push widgets up and prevent stretching
         spacer = QWidget()
         spacer.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Expanding)
-        self.result_layout.addWidget(spacer)       
-        self.result_container.setLayout(self.result_layout)
-        self.setWidget(self.result_container)
+        result_layout.addWidget(spacer)       
+        result_container.setLayout(result_layout)
+        self.setWidget(result_container)
     
     def populate_barcode_tab(self):
         """Populates the tab with barcode cards"""
@@ -1045,17 +1133,24 @@ class BarcodesTab(QScrollArea):
     
     def check_barcode_card(self, barcode_id):
         """Adds a barcode card that has been checked to the variable checked_card given its id."""
+        # Looks for the card that has been selected
         for barcode_card in self.barcode_card_list:
             if barcode_card.id == barcode_id:
+                # Check the barcode and add that sequence for further analysis
                 self.checked_card = barcode_card
-                self.controller.add_sequence_to_blast(barcode_card.sequence, self.tab_name, barcode_id)
+                self.controller.add_sequence_to_blast(sequence=barcode_card.sequence, 
+                                                      barcode_type=self.tab_name, 
+                                                      acc_number=barcode_id)
         self.controller.write_in_logbook("The barcode " + barcode_id + " has been selected.")
 
     def uncheck_barcode_cards(self, barcode_id):
         """Deletes a barcode card that has been unchecked from the variable checked_card given its id."""
+        # Look for the barcodes card that has been deselected
         for barcode_card in self.barcode_card_list:
             if barcode_card.id != barcode_id:
+                # Uncheck the card
                 barcode_card.uncheck()
+        # Remove card from checked_card and remove sequence from the list of sequences to analyse
         self.checked_card = None
         self.controller.remove_sequence_to_blast(self.tab_name)
 
@@ -1063,14 +1158,21 @@ class BarcodesTab(QScrollArea):
 class OutputModule(QTabWidget):
     """Module for the output data: barcode cards and results.
 
-    Attributes (widgets):
+    This module contains the tabs with the barcode cards found and the results tab where the
+    statistical results are shown. Initially there is only an empty results tab and barcode tabs
+    are added as the user searches specific barcodes. 
+
+    Attributes:
+        controller(MainController): controller to pass down when addint tabs to the module
+    
+    Widgets:
         results_tab(ResultsTab): see ResultsTab
     """
     def __init__(self, controller):
-        """ Initialises an instance of the class.
+        """Creates an instance of the class.
 
         Args:
-            controller(MainController): see BarcodesTab class
+            controller(MainController): controller to pass down when addint tabs to the module
         """
         super().__init__()
         # Add controller
@@ -1078,7 +1180,7 @@ class OutputModule(QTabWidget):
         # Set position tabs to horizontal on top
         self.setTabPosition(QTabWidget.North)
         """Add tabs."""
-        self.results_tab = ResultsTab(self.controller)
+        self.results_tab = ResultsTab()
         # Add tabs to tab widget
         self.insertTab(0, self.results_tab, "Results")
         self.setCurrentIndex(0)
@@ -1101,6 +1203,7 @@ class OutputModule(QTabWidget):
         self.setCurrentIndex(self.count() - 1) 
     
     def show_results(self, results, title):
+        "Passes down the results and title from the analysis to display them in the results tab."
         # Check type of results
         labels = results[0]
         data_type = "percentages" if '%' in labels[0] else 'differences'
@@ -1112,10 +1215,13 @@ class OutputModule(QTabWidget):
         self.results_tab.add_stats(results, data_type, title)     
     
     def on_tab_changed(self, index):
+        """Resstarts the animation when the tab is changed to results tab for aesthetic purposes."""
         if index == 0:
             self.results_tab.restart_animation()
     
     def clear(self):
+        """Clears al the information in the module to start a new search"""
+        # Set tab to results tab
         self.setCurrentIndex(0)
         # Delete all barcode tabs
         while self.count() > 1:
