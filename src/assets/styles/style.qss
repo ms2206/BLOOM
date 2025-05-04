@@ -1,0 +1,264 @@
+
+/* Main window */
+
+QMainWindow {
+    background-color: #f9e8f0
+}
+
+
+/* Button to hide input tabs */
+
+QToolButton {
+    font-size: 28px; 
+    border: none; 
+    background: transparent; 
+    padding: 4px; 
+    font-weight: bold;
+    color: #BE5985;
+}
+
+
+/* Title of the app */
+
+QLabel#title{
+    font-size: 24px; 
+    font-weight: bold; 
+    font-family: "Bahnschrift Semibold";
+    color: #BE5985;
+}
+
+
+/* Splitters */
+
+QSplitter::handle { 
+    background-color: transparent; 
+}
+
+
+/* Tabs */
+
+QTabWidget::pane {
+    background-color: #BE5985;
+    border-radius: 1px
+}
+
+QTabBar::tab {
+    min-width: 80px;
+    padding: 10px 10px;
+    background-color: #EC7FA9;
+    font-family: "Bahnschrift Semibold";
+    font-size: 16px;
+    font-weight: bold;
+    color: #FFFFFF
+}
+
+QTabBar::tab:selected {
+    background-color: #BE5985;
+}
+
+
+/* Labels */
+
+QLabel#regularLabel {
+    font-size: 16px;
+    font-family: "Bahnschrift Semibold";
+    font-weight: bold;
+    color: #FFFFFF
+}
+
+
+/* Input widgets */
+
+QLineEdit{
+    background-color: #FFFFFF;
+    border: 2px solid #EC7FA9;
+    border-radius: 5px;
+    padding: 5px;
+    font-family: "Bahnschrift Semibold";
+    font-size: 14px
+}
+
+QListView { 
+    background-color: #FFFFFF; 
+}
+
+QComboBox {
+    background-color: #FFFFFF;
+    border: 2px solid #EC7FA9;
+    border-radius: 5px;
+    padding: 5px;
+    font-family: "Bahnschrift Semibold";
+    font-size: 14px
+}
+
+QComboBox::drop-down {
+    subcontrol-origin: padding;
+    subcontrol-position: top right;
+    width: 20px;
+    border: 0px
+}
+
+QComboBox QAbstractItemView {
+    background-color: #FFFFFF;
+    border: 2px solid #EC7FA9;
+    selection-background-color: #EC7FA9;
+    selection-color: white;
+}
+
+QTextEdit {
+    background-color: #FFFFFF;
+    border: 2px solid #EC7FA9;
+    border-radius: 5px;
+    padding: 5px;
+    font-family: "Bahnschrift Semibold";
+    font-size: 14px
+}
+
+QTextEdit#forwardPrimer {
+    background-color: #FAC898;
+    border: 2px solid #EC7FA9;
+    border-radius: 5px;
+    padding: 5px;
+    font-family: "Bahnschrift Semibold";
+    font-size: 14px
+}
+
+QTextEdit#reversePrimer {
+    background-color: #B3EBF2;
+    border: 2px solid #EC7FA9;
+    border-radius: 5px;
+    padding: 5px;
+    font-family: "Bahnschrift Semibold";
+    font-size: 14px
+}
+
+QPushButton#regularButton {
+    background-color: #f9e8f0;
+    border: 4px solid #EC7FA9;
+    border-radius: 8px;
+    padding: 10px;
+    font-family: "Bahnschrift Semibold";
+    font-weight: bold;
+    font-size: 20px
+}
+
+QPushButton#regularButton:hover {
+    background-color: #fadeeb;
+}
+
+QPushButton#regularButton:pressed {
+    background-color: #EC7FA9;
+    border: 4px solid #fadeeb;
+}
+
+QPushButton#regularButton:disabled {
+    background-color: #f9e8f0;
+}
+
+QCheckBox {
+    font-size: 16px;
+    font-family: "Bahnschrift Semibold";
+    font-weight: bold;
+    color: #FFFFFF
+}
+
+QCheckBox::indicator {
+    width: 20px;
+    height: 20px;
+    border: 2px solid #EC7FA9;
+    border-radius: 3px;
+    background-color:  #FFFFFF;
+}
+
+QCheckBox::indicator:checked {
+    background-color: #EC7FA9;
+}
+
+
+/* LogBook widgets */
+
+QTextEdit#logBook{
+    background-color: #FFFFFF;
+    border: 3px solid #BE5985;
+    border-radius: 5px;
+    padding: 5px;
+    font-family: "Bahnschrift Semibold";
+    font-size: 14px
+}
+
+QLabel#logBookTitle{
+    font-size: 20px;
+    font-family: "Bahnschrift Semibold";
+    font-weight: bold;
+    color: #BE5985
+}
+
+
+/* Output widgets */
+
+QWidget#outputWidget{
+    background-color: #ffffff;
+    border: 3px solid #BE5985;
+    border-radius: 5px;
+}
+
+QScrollArea {
+    background: transparent;
+    border: 0px
+}
+
+QFrame#barcodeCard{
+    background-color: #fadeeb;
+    border-radius: 12px;
+    padding: 1px   
+}
+
+QLabel#barcodeLabel{
+    font-size: 16px;
+    font-family: "Bahnschrift Semibold";
+    color: #000000
+}
+
+QTextEdit#alignmentTextPopup{
+    background-color: #FFFFFF;
+    border: 3px solid #EC7FA9;
+    border-radius: 5px;
+    padding: 5px;
+    font-family: "Consolas";
+    font-size: 16px   
+}
+
+QWidget#alignmentPopup{
+    background-color: #f9e8f0;
+}
+
+QRadioButton::indicator {
+    width: 20px;
+    height: 20px;
+    border-radius: 10px;
+    border: 2px solid #EC7FA9;
+    background-color: white; 
+}
+
+QRadioButton::indicator:checked {
+    background-color: #EC7FA9;
+    border: 2px solid #EC7FA9;
+}
+
+QRadioButton::indicator:hover {
+    border: 2px solid #BE5985; /* hot pink */
+}
+
+QLabel#resultsLabel {
+    font-size: 24px;
+    font-family: "Bahnschrift Semibold";
+    font-weight: bold;
+    color: #000000
+}
+
+QLabel#resultsTitleLabel {
+    font-size: 28px;
+    font-family: "Bahnschrift Semibold";
+    font-weight: bold;
+    color: #000000
+}
