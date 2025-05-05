@@ -1,0 +1,48 @@
+# Parameters for the NCBI search
+ncbi:
+  apy_key:
+  email: exampleofemail@email.com
+
+# Parameters for the aligners
+primer_aligner:
+  match_score: 2
+  mismatch_score: -1
+  open_gap_score: -1
+  extend_gap_score: -0.8
+
+long_aligner:
+  match_score: 2
+  mismatch_score: -1
+  open_gap_score: -0.5
+  extend_gap_score: -0.1
+
+# Barcodes
+barcodes:
+  - name: "trnL-UAA"
+    query: "trnL-UAA"
+    fprimer: "CGAAATCGGTAGACGCTACG"
+    rprimer: "GGGGATAGAGGGACTTGAAC"
+  - name: "trnL-P6"
+    query: "trnL-UAA"
+    fprimer: "GGGCAATCCTGAGCCAA"
+    rprimer: "CCATTGAGTCTCTGCACCTATC"
+
+# BLAST 
+percentage_threshold: 98
+blast_modes:
+  - "Megablast"
+  - "Discontiguous blast"
+taxonomy_ranks:
+  - "Genus"
+  - "Tribe"
+  - "Subfamily"
+  - "Family"
+
+# Data visualisation
+data_types:
+  - "Number of differences"
+  - "Identity percentage"
+animation_duration: 1500
+
+# Github repo url
+github_link: "https://github.com/ms2206/BLOOM"
