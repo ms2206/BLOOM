@@ -18,7 +18,7 @@ The Barcode Linker for Organism and Ontology Mapping (BLOOM) tool provides the u
 </div>
 
 <h3>Installation</h3>
-BLOOM was designed to be easy for the user to access, therefore the tool has been compiled into an executable file, which can be downloaded <a href="https://github.com/ms2206/BLOOM/blob/main/BLOOM.exe">here</a>.
+BLOOM was designed to be easy for the user to access, therefore the tool has been compiled into an executable file, which can be downloaded. 
 
 
 <h3>Documentation</h3>
